@@ -120,3 +120,12 @@ if need(joinpath(DATA_DIR, "galerkin_floor.jld2"))
                 gf["proj_floor"][i], gf["gal_rel"][i], gf["mlp_rel"][i])
     end
 end
+
+if need(joinpath(DATA_DIR, "eigenmode_diagnostic.jld2"))
+    eg = load(joinpath(DATA_DIR, "eigenmode_diagnostic.jld2"))
+    println("\n## note §4b eigenmode diagnostic")
+    @printf("power-law fit α ~ λ^-%.2f; excited modes: %s\n",
+            eg["p_powerlaw"], join(string.(eg["excited"]), ","))
+    @printf("collinearity svals: %s\n",
+            join((@sprintf("%.1e", s) for s in eg["func_svals"][1:min(4, end)]), "  "))
+end

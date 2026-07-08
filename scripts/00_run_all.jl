@@ -29,6 +29,7 @@ scripts = [
     "19_rank_prediction.jl",
     "20_statistics.jl",
     "21_galerkin_floor.jl",
+    "22_eigenmode_diagnostic.jl",
     "18_report_numbers.jl",   # last: prints every table for diffing against the report
 ]
 

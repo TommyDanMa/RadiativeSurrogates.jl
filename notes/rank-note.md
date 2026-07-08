@@ -22,27 +22,34 @@ StableRNG, seed table in the report appendix).
 
 ## 2. The argument
 
-Two structural facts about this problem class, not about radiation specifically:
+Two ingredients, of very different logical strength.
 
-**(a) Interior linearity.** With constant $k$ the PDE is linear inside $\Omega$; all
-nonlinearity sits on $\Gamma_r$. Decompose $u = (Q/k)\,w + h$, where $-\nabla^2 w = \hat q$
-is a fixed particular response to the unit load shape (parameter-independent!) and $h$ is
-harmonic with the radiation BC absorbing the nonlinearity. The load-dependent part of the
-manifold is therefore *one exact direction*, however nonlinear the BC.
+**(a) Exact parameter collapses (rigorous; no approximation).** Divide the whole problem
+by $k$: the interior equation becomes $-\nabla^2 u = (Q/k)\,\hat q$ and the BC becomes
+$-\partial_n u = (\varepsilon/k)\,\sigma(u^4 - T_s^4)$. The solution therefore depends on
+$(\varepsilon, Q, k)$ **only through $(Q/k, \varepsilon/k)$**: conductivity is not a new
+parameter, it rescales the other two, and the 3-parameter manifold is exactly a
+2-parameter manifold (this is what P2 tests). Similarly, each disjoint load shape enters
+the inhomogeneity as its own fixed spatial mode $(Q_i/k)\,\hat q_i$, which is what P1's
+"+1 direction per heater" rests on. One caution the first draft got wrong: the
+*inhomogeneity* is rank-1 per load, but the *response* to it is not automatically
+one direction, because the BC couples everything through the total temperature. The
+collapse arguments bound the number of effective parameters, not yet the rank.
 
-**(b) Boundary-layer poverty of the harmonic part.** $h$ is harmonic on a rectangle,
-insulated on three sides, with flux only through $\Gamma_r$. Because conduction smooths
-the edge temperature, that flux is nearly uniform along $\Gamma_r$, and the harmonic
-extension of nearly-uniform edge data is spanned by very few shapes (a level and a tilt).
-The parameters move the *coefficients* of these shapes (strongly nonlinearly, e.g. the
-radiative-equilibrium level $\propto (Q/\varepsilon)^{1/4}$), but coefficient nonlinearity
-is invisible to POD rank; only *shape* variation counts.
-
-Linearizing the BC around a reference state (Robin coefficient $4\varepsilon_0\sigma
-u_0^3$) makes this quantitative: to first order in the parameter box the centered manifold
-lies in $\mathrm{span}\{w_Q, w_\varepsilon\}$ (rank $d$ for $d$ parameters), and
-$\sigma_{d+1}/\sigma_1$ is the second-order Taylor remainder, controlled by the box size
-and the curvature of the parameter-to-solution map.
+**(b) From effective parameters to rank (standard, plus an open gap).** Linearizing the
+BC around a reference state gives a Robin problem with coefficient
+$4\varepsilon_0\sigma u_0^3$ and smooth (indeed analytic) dependence on the effective
+parameters; Kolmogorov $n$-widths of such families decay exponentially. This half is
+15 years of standard theory: Cohen–DeVore–Schwab (2011) for analytic parametric
+ellipticity, Cohen–DeVore (2016) for widths under holomorphic maps,
+Lassila–Manzoni–Quarteroni–Rozza (2013) for parametric operators with a dominant affine
+term, Bachmayr–Cohen (2017) for the low-rank story. What the standard theory predicts is
+*fast smooth decay*; what we observe is a **hard cutoff** ($\sigma_{d+1}/\sigma_1 \sim
+10^{-8}$, then machine floor), and the failed Taylor scaling in P3 says the cutoff
+magnitude is not a local second-order remainder either. The mechanism that sets the
+cutoff scale is the genuinely open part; §4b below tests one candidate (spectral-gap
+suppression: the parametric response may excite eigenmodes of the linearized operator at
+amplitudes falling off with the eigenvalue).
 
 ## 3. Pre-registered predictions (written before running the experiments)
 
@@ -97,6 +104,35 @@ asymptotic small-perturbation regime, so $\sigma_3$ is governed by something coa
 the local quadratic remainder. We report this as a miss; understanding the sub-asymptotic
 scaling is the most interesting open thread the experiments produced.
 
+## 4b. Exploratory follow-up (not pre-registered): what sets the cutoff?
+
+External review proposed a spectral-gap mechanism: the response might excite eigenmodes of
+the linearized operator at amplitudes $\sim 1/\lambda_k$, making the cliff an
+eigenvalue-gap effect. We measured it (`scripts/22_eigenmode_diagnostic.jl`, figure
+`21_eigenmode_diagnostic.png`): generalized eigenbasis of $A_\text{cond} +
+4\varepsilon_0\sigma|u_0|^3$ at the box-center reference, centered snapshots expanded in
+it. Three findings:
+
+1. **A parity selection rule.** The problem is symmetric about the midline $y = L_y/2$,
+   so odd-parity eigenmodes carry exactly zero ($\alpha_k/\alpha_1 \sim 10^{-13}$); only
+   12 of the first 20 modes are excited at all.
+2. **Amplitudes fall as $\lambda^{-1.9}$**, steeper than the hypothesized $1/\lambda$.
+3. **The decisive one: the cliff is functional collinearity, not spectral content.**
+   Sizable eigen-content ($\alpha_4/\alpha_1 = 3.6\cdot10^{-2}$) coexists with POD
+   $\sigma_3/\sigma_1 = 7\cdot10^{-9}$. Row-normalizing the 12 excited coefficient
+   functions $\mu \mapsto \langle v_k, u(\mu)\rangle$ and taking their singular values
+   gives 2.5, 2.3, $3.9\cdot10^{-5}$, then machine floor: twelve spatial modes, but only
+   **two independent parameter functions** driving them. Amplitude-weighting that
+   $4\cdot10^{-5}$ equal-weight leakage by the small mode amplitudes reproduces the
+   $10^{-9}$-scale POD ratio.
+
+So the plain spectral-gap hypothesis is rejected, and the open question sharpens: why do
+the coefficient functions of a dozen spatial modes span (almost exactly) a 2-dimensional
+function space? The §2(a) collapses bound the *effective parameter count* at two, and
+analyticity in those two effective parameters is presumably what compresses the function
+space; that reconnects to the standard width theory, but posed in parameter-function
+space rather than state space. This is the thread we would most like a read on.
+
 ## 5. The transient contrast, honestly
 
 Under switching load cycles the space-time manifold re-thickens ($\sigma_8/\sigma_1
@@ -136,12 +172,38 @@ bootstrap on per-sample errors, KAN − MLP = +2.0e-3 [1.6, 2.4]e-3 and direct �
 the mapper 200× (2.1e-1), and a random orthonormal basis caps accuracy at exactly its
 own projection floor (2.13e-1), the basis-quality control.
 
-## 7. Questions
+## 7. Questions (updated after one round of external review)
 
-1. Is the §2 argument a known result in the RB literature in this form (interior-linearity
-   + boundary-layer poverty giving *hard* rank cliffs rather than generic fast decay), or
-   worth writing up?
-2. If worth writing: is the right shape a short numerical-analysis note (JCP/CMAME-style)
-   or a workshop paper with the surrogate diagnostics attached?
-3. Which baseline would you want to see: DeepONet on the same snapshots (our plan), full
-   DEIM, or something else?
+Positioning received so far, which we adopt: the smoothness-to-exponential-decay half of
+§2(b) is standard and ~15 years old (Cohen–DeVore–Schwab 2011; Cohen–DeVore 2016;
+Lassila–Manzoni–Quarteroni–Rozza 2013; Bachmayr–Cohen 2017). The plausibly novel, narrower
+content is: the exact parameter collapses of §2(a) used as falsification tests (P2), the
+hard-cutoff empirics that smooth-decay theory does not obviously produce, and the §4b
+collinearity diagnostic. Sizing suggestion received: a JOSS software paper plus a short
+workshop note (ML4PS at NeurIPS, or a SIAM UQ workshop), growing into a numerical-analysis
+note only if the cutoff mechanism firms up. Baseline plan: DeepONet only, on the same
+snapshots; full DEIM dropped, since §6 already delivers the Galerkin floor it would
+provide.
+
+For discussion:
+1. Does the §4b picture (many excited spatial modes, two independent parameter functions)
+   correspond to a known statement about analytic parametric families, or is it the seed
+   of the mechanism note?
+2. Sanity-check the sizing: JOSS + ML4PS/SIAM-UQ workshop note?
+3. DeepONet as the single baseline on the same snapshots, equal and 3× parameter budgets:
+   the right call?
+
+## References
+
+- Cohen, DeVore & Schwab, *Analytic regularity and polynomial approximation of parametric
+  and stochastic elliptic PDEs*, Analysis and Applications, 2011.
+- Cohen & DeVore, *Kolmogorov widths under holomorphic mappings*, IMA Journal of
+  Numerical Analysis, 2016.
+- Lassila, Manzoni, Quarteroni & Rozza, *Generalized reduced basis methods and n-width
+  estimates for the approximation of the solution manifold of parametric PDEs*, 2013.
+- Bachmayr & Cohen, *Kolmogorov widths and low-rank approximations of parametric elliptic
+  PDEs*, Mathematics of Computation, 2017.
+- Chaturantabut & Sorensen, *Nonlinear model reduction via discrete empirical
+  interpolation*, SIAM J. Sci. Comput., 2010.
+- Peherstorfer & Willcox, *Data-driven operator inference for nonintrusive
+  projection-based model reduction*, CMAME, 2016.

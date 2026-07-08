@@ -1,4 +1,7 @@
-# Reduced-Basis Neural Surrogates for the Heat Equation with a Nonlinear Radiation Boundary Condition
+# When Is Coefficient Learning the Right Factorization?
+
+**A diagnostic study of reduced-basis neural surrogates for the heat equation with a
+nonlinear radiation boundary condition**
 
 *A Gridap × SciML prototype for orbital compute thermal design.*
 
@@ -165,6 +168,15 @@ predicts a fourth $O(\sigma_2)$ mode); and the box-shrink scaling came out sub-q
 (slopes 0.2–0.7 instead of the predicted [1, 2]), a miss recorded as such in the note.
 
 ![Rank predictions](../figures/20_rank_prediction.png)
+
+An exploratory eigenmode diagnostic (`scripts/22_eigenmode_diagnostic.jl`, suggested by
+external review, not pre-registered) rejects a spectral-gap explanation of the cutoff and
+localizes it in **functional collinearity**: 12 parity-allowed eigenmodes of the
+linearized operator are excited (amplitudes $\sim \lambda^{-1.9}$), but their coefficient
+functions over the parameter box have normalized singular values 2.5, 2.3, 3.9e-5: many
+spatial modes, two independent parameter functions. Details in `notes/rank-note.md` §4b.
+
+![Eigenmode diagnostic](../figures/21_eigenmode_diagnostic.png)
 
 Mechanism: with the load geometry fixed, varying $Q$ scales the (linear)
 source-response shape exactly, and varying $\varepsilon$ mostly moves the radiative
@@ -485,6 +497,9 @@ unstructured GridapGmsh geometries; 3D; mass-matrix-weighted POD.
 - Reduced-basis methods: Quarteroni, Manzoni & Negri, *Reduced Basis Methods for PDEs*, 2016.
 - DEIM: Chaturantabut & Sorensen, SIAM J. Sci. Comput. 2010.
 - Operator inference: Peherstorfer & Willcox, Comput. Methods Appl. Mech. Eng. 2016.
+- Parametric regularity and widths: Cohen, DeVore & Schwab, Anal. Appl. 2011; Cohen &
+  DeVore, IMA J. Numer. Anal. 2016; Lassila, Manzoni, Quarteroni & Rozza 2013; Bachmayr &
+  Cohen, Math. Comp. 2017.
 - Kolmogorov–Arnold networks: Liu et al., 2024; `KolmogorovArnold.jl`.
 - Parent project: [TommyDanMa/afw](https://github.com/TommyDanMa/afw), *Learning PDE
   Solution Operators in the Right Basis* (report in `report/report.md` there).

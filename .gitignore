@@ -1,5 +1,8 @@
 # Generated data artifacts (regenerable via scripts/)
 /data/
 
+# Local AI-session context, not for publication
+CLAUDE.md
+
 # VTK output from the early draft solver
 *.vtu
