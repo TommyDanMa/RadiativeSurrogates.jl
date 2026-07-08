@@ -7,7 +7,7 @@ linear-elliptic reduced-basis study (a *Treball de Recerca*) lives; this repo is
 standalone continuation. The problem: the heat equation on a 2D radiator section whose
 dominant heat rejection is **Stefan–Boltzmann radiation to deep space** (T_space = 3 K),
 with parametric emissivity ε and electronics load cycles, a controlled prototype for
-AI1-class orbital-compute thermal design (`docs/images/`). **Gridap assembles, SciML
+AI1-class orbital-compute thermal design (`docs/src/assets/`). **Gridap assembles, SciML
 solves**: Gridap.jl builds the FE residual/Jacobian, NonlinearSolve.jl drives the steady
 Newton solves, OrdinaryDiffEq.jl (mass-matrix ImplicitEuler/Trapezoid/FBDF) drives the
 transients.

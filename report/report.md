@@ -47,7 +47,7 @@ data-derived basis while preserving the dominant radiative physics through an ex
 residual that includes the $T^4$ term.
 
 The concrete motivation is AI1-class orbital compute (SpaceX reveal, June 2026; see
-`docs/images/`): 150 kW-peak compute rejected through ~110 m² of deployable radiators, about
+`docs/src/assets/`): 150 kW-peak compute rejected through ~110 m² of deployable radiators, about
 1.4 kW/m², which our parameter regime brackets. The reveal's spec numbers are used as
 *motivation only*, not as model inputs.
 

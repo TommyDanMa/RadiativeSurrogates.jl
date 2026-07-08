@@ -80,7 +80,9 @@ unchanged. **Predict: log–log slope in [1, 2] on at least one axis; the pair o
 identifies which curvature (ε-, Q-, or cross-term) dominates the remainder.** We commit to
 reporting both slopes whatever they are.
 
-## 4. Results (figure `20_rank_prediction.png`; scorecard, misses included)
+## 4. Results (scorecard, misses included)
+
+![Rank predictions: spectra overlays for the 3-parameter variants and box-shrink scaling of the remainder](../figures/20_rank_prediction.png)
 
 **P1 -hit on structure, miss on remainder magnitude.** With the second heater,
 $\sigma_3/\sigma_1 = 3.5\cdot 10^{-2}$ becomes a genuine mode and the cliff moves to
@@ -108,8 +110,8 @@ scaling is the most interesting open thread the experiments produced.
 
 External review proposed a spectral-gap mechanism: the response might excite eigenmodes of
 the linearized operator at amplitudes $\sim 1/\lambda_k$, making the cliff an
-eigenvalue-gap effect. We measured it (`scripts/22_eigenmode_diagnostic.jl`, figure
-`21_eigenmode_diagnostic.png`): generalized eigenbasis of $A_\text{cond} +
+eigenvalue-gap effect. We measured it (`scripts/22_eigenmode_diagnostic.jl`):
+generalized eigenbasis of $A_\text{cond} +
 4\varepsilon_0\sigma|u_0|^3$ at the box-center reference, centered snapshots expanded in
 it. Three findings:
 
@@ -125,6 +127,8 @@ it. Three findings:
    **two independent parameter functions** driving them. Amplitude-weighting that
    $4\cdot10^{-5}$ equal-weight leakage by the small mode amplitudes reproduces the
    $10^{-9}$-scale POD ratio.
+
+![Eigenmode diagnostic: response energy vs linearized-operator eigenvalue, with the rejected 1/λ reference and the λ^-1.9 fit](../figures/21_eigenmode_diagnostic.png)
 
 So the plain spectral-gap hypothesis is rejected, and the open question sharpens: why do
 the coefficient functions of a dozen spatial modes span (almost exactly) a 2-dimensional
