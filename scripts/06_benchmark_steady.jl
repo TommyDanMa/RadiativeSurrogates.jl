@@ -11,6 +11,14 @@ using BenchmarkTools
 
 println("=== 06_benchmark_steady ===")
 
+# Benchmark hygiene: timings are hardware-bound, so the machine is recorded in
+# the artifact and printed with every table (report §8.2, README).
+hardware = (; cpu = Sys.cpu_info()[1].model, threads = Threads.nthreads(),
+            blas_threads = LinearAlgebra.BLAS.get_num_threads(),
+            julia = string(VERSION))
+@printf("hardware: %s | %d Julia threads | %d BLAS threads | Julia %s\n",
+        hardware.cpu, hardware.threads, hardware.blas_threads, hardware.julia)
+
 fom = build_steady_fom(CFG)
 d = load_snapshots()
 pod = load_pod()
@@ -71,5 +79,7 @@ jldsave(joinpath(DATA_DIR, "benchmark.jld2");
         t_fom_ms = t_fom, batch = B,
         names = [r.name for r in rows], t1 = [r.t1 for r in rows],
         tb = [r.tb for r in rows], s1 = [r.s1 for r in rows],
-        sb = [r.sb for r in rows], allocs = [Int(r.allocs) for r in rows])
+        sb = [r.sb for r in rows], allocs = [Int(r.allocs) for r in rows],
+        cpu = hardware.cpu, threads = hardware.threads,
+        blas_threads = hardware.blas_threads, julia = hardware.julia)
 println("\nsaved data/benchmark.jld2")

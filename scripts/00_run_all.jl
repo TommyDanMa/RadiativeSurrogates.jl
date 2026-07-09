@@ -32,6 +32,10 @@ scripts = [
     "21_galerkin_floor.jl",
     "22_eigenmode_diagnostic.jl",
     "23_cliff_reconstruction.jl",
+    "24_gci.jl",
+    "25_precision_audit.jl",
+    "26_attractor_check.jl",
+    "27_forward_uq.jl",
     "18_report_numbers.jl",   # last: prints every table for diffing against the report
 ]
 

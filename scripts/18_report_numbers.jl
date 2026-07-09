@@ -32,6 +32,8 @@ end
 if need(joinpath(DATA_DIR, "benchmark.jld2"))
     b = load(joinpath(DATA_DIR, "benchmark.jld2"))
     println("## §8.2 benchmark (batch = $(b["batch"]), FOM $(round(b["t_fom_ms"], digits=1)) ms)")
+    haskey(b, "cpu") && @printf("hardware: %s | %d Julia threads | %d BLAS threads | Julia %s\n",
+                                b["cpu"], b["threads"], b["blas_threads"], b["julia"])
     for (i, nm) in enumerate(b["names"])
         @printf("| %s | %.3f | %.4f | %.0f× | %.0f× | %d |\n", nm,
                 b["t1"][i], b["tb"][i], b["s1"][i], b["sb"][i], b["allocs"][i])
@@ -145,4 +147,60 @@ if need(joinpath(DATA_DIR, "eigenmode_diagnostic.jld2"))
             eg["p_powerlaw"], join(string.(eg["excited"]), ","))
     @printf("collinearity svals: %s\n",
             join((@sprintf("%.1e", s) for s in eg["func_svals"][1:min(4, end)]), "  "))
+end
+
+if need(joinpath(DATA_DIR, "gci.jld2"))
+    gc = load(joinpath(DATA_DIR, "gci.jld2"))
+    gci_ok(v) = filter(!isnan, v)
+    println("\n## §8.8 GCI error bars (Fs = $(gc["fs"]), grids 60×30 → 240×120)")
+    @printf("T_probe p̂: %s\n",
+            join((@sprintf("%.2f", p) for p in gci_ok(gc["phat"][:, 1])), ", "))
+    @printf("u_L2 p̂: %s\n",
+            join((@sprintf("%.2f", p) for p in gci_ok(gc["phat"][:, 2])), ", "))
+    bc = gci_ok(gc["band_coarse"][:, 1])
+    isempty(bc) ||
+        @printf("T_probe band on deployed 60×30 (= reported T_peak there): median %.3f K, max %.3f K (N = %d)\n",
+                median(bc), maximum(bc), length(bc))
+    @printf("P_rad grid-exact: worst |P_rad − Q|/Q %.1e; T_edge balance-pinned: worst coarse-vs-fine %.1e\n",
+            gc["prad_dev"], gc["tedge_dev"])
+end
+
+if need(joinpath(DATA_DIR, "precision_audit.jld2"))
+    pa = load(joinpath(DATA_DIR, "precision_audit.jld2"))
+    println("\n## §8.9 precision audit (N = $(pa["ntest"]) test samples)")
+    @printf("F64: rel L² %.4e | ΔT_peak max %.2f K | ΔP/P max %.2e\n",
+            pa["rel"]["F64"], pa["dT_max"]["F64"], pa["dP_max"]["F64"])
+    @printf("F32: rel L² %.4e | ΔT_peak max %.2f K | ΔP/P max %.2e | field drift vs F64 %.1e K\n",
+            pa["rel"]["Float32"], pa["dT_max"]["Float32"], pa["dP_max"]["Float32"],
+            pa["drift"]["Float32"])
+    @printf("F16: finite fractions net %.3f / coeffs %.3f / fields %.3f\n",
+            pa["finite_net"]["Float16"], pa["finite_coef"]["Float16"],
+            pa["finite_field"]["Float16"])
+    @printf("rad4 in F16 overflows for T ≥ %.1f K (fraction of field values: %.3f)\n",
+            pa["rad4_f16_overflow_K"], pa["rad4_f16_overflow_frac"])
+end
+
+if need(joinpath(DATA_DIR, "attractor_check.jld2"))
+    at = load(joinpath(DATA_DIR, "attractor_check.jld2"))
+    println("\n## §8.10 attractor check ($(at["ncycles"]) FOM cycles, N = $(length(at["points"])) points)")
+    for (i, p) in enumerate(at["points"])
+        dev, chg = at["dev"][i], at["chg"][i]
+        @printf("ε=%.2f Qp=%.0f duty=%.2f per=%.0f: dev(3) %.2f K, dev c3–20 ∈ [%.2f, %.2f] K; FOM settle c1→2 %.3f K, c19→20 %.4f K\n",
+                p[:eps_r], p[:Qp], p[:duty], p[:period], dev[3],
+                minimum(dev[3:end]), maximum(dev[3:end]), chg[1], chg[19])
+    end
+end
+
+if need(joinpath(DATA_DIR, "forward_uq.jld2"))
+    uq = load(joinpath(DATA_DIR, "forward_uq.jld2"))
+    @printf("\n## §8.11 forward UQ (ε ~ N(%.2f, %.2f), Q ~ N(%.0f, %.0f) W/m; sur N = %d, FOM N = %d)\n",
+            uq["eps_mean"], uq["eps_std"], uq["q_mean"], uq["q_std"],
+            uq["n_sur"], uq["n_fom"])
+    for (i, q) in enumerate(uq["quants"])
+        @printf("| %.1f%% | %.2f | %.2f | %+.2f | %.2f |\n", 100q, uq["qs_fom"][i],
+                uq["qs_sur_paired"][i], uq["qs_sur_paired"][i] - uq["qs_fom"][i],
+                uq["qs_sur_full"][i])
+    end
+    @printf("paired |sur − FOM| (N = %d): median %.2f K, max %.2f K\n",
+            uq["n_fom"], uq["d_med"], uq["d_max"])
 end

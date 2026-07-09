@@ -49,7 +49,24 @@ residual that includes the $T^4$ term.
 The concrete motivation is AI1-class orbital compute (SpaceX reveal, June 2026; see
 `docs/src/assets/`): 150 kW-peak compute rejected through ~110 m² of deployable radiators, about
 1.4 kW/m², which our parameter regime brackets. The reveal's spec numbers are used as
-*motivation only*, not as model inputs.
+*motivation only*, not as model inputs. One origin note, for honesty: the first candidate
+testbed was Maxwell's equations; the radiative boundary condition was chosen instead as a
+far simpler carrier of strong nonlinearity, a single boundary term with everything else
+linear, which is exactly what keeps the diagnostic controlled.
+
+**Who actually needs the surrogate.** Not the operator's design office, for this problem:
+an organization with abundant compute runs the full-order model and has its answer over a
+coffee, and this prototype's own FOM solves in 23 ms (§8.2). A surrogate of this class
+earns its keep in three places. *Many-query outer loops*: multidisciplinary optimization
+and uncertainty propagation ask for $10^4$–$10^6$ evaluations inside an optimizer, where
+even a fast FOM is the bottleneck; §8.11 propagates 100,000 scenarios in 7.5 s where the
+exact reference needs 444 s for a tenth as many. *Onboard and edge deployment*: where
+compute genuinely is scarce, an 8,642-parameter model with Float32-lossless inference
+(§8.9) and an explicit `in_training_box` validity guard has the ingredients of a
+flight-software component, a role the FOM cannot fill at all. And, first among the three,
+the *diagnostic itself*: this study's primary product is not the surrogate but the answer
+to when coefficient learning is the right factorization, and why this manifold is rank 3
+(`notes/rank-note.md`).
 
 ## 2. Mathematical background
 
@@ -63,7 +80,7 @@ dropping the time term. In code the radiation nonlinearity is written $u|u|^3 - 
 coincides with $u^4 - T_s^4$ for $u > 0$ and is monotone on all of $\mathbb{R}$, so Newton
 iterates that momentarily dip negative still feel a restoring flux of the correct sign.
 
-Two structural facts drive the validation suite. First, with no Dirichlet DOFs the constant
+Two structural facts drive the verification suite. First, with no Dirichlet DOFs the constant
 $v \equiv 1$ lies in the test space, so the solved discrete system satisfies the **exact
 discrete energy balance** $P_\text{in} = \oint \varepsilon\sigma (u_h^4 - T_s^4)\,d\Gamma$ up
 to the Newton tolerance. Second, the boundary Jacobian is analytic,
@@ -105,11 +122,11 @@ This division of labour is the point of the architecture. "Residuals and Jacobia
 control" means we hand the *assembled* $R$ and $J$ to the solver ourselves, and can therefore
 test them (below) independently of any solver behaviour.
 
-## 4. Solver validation
+## 4. Solver verification
 
-Eight named test files (66 assertions) pin the physics before any ML enters, plus a
-skip-guarded regression file that pins the *deployed* surrogates' quality with 3× margin
-whenever the data artifacts are present:
+Eight named test files (51 assertions) pin the physics before any ML enters, plus a
+skip-guarded regression file (17 more whenever the data artifacts are present, 68 in
+total) that pins the *deployed* surrogates' quality with 3× margin:
 
 | Test | What it pins | Result |
 | --- | --- | --- |
@@ -136,8 +153,9 @@ conserves the quadratured value, not the nominal one.
 ![Steady temperature fields, configs A and B](../figures/03_steady_fields.png)
 
 512 Sobol samples over $\mu = (\varepsilon, Q) \in [0.1, 0.95] \times [100, 800]$ W/m, one
-converged Newton solve each (median 49 ms, worst energy balance 6e-12, peak temperatures
-296–973 K). The POD of the 410 training snapshots delivers the project's first headline:
+converged Newton solve each (median 49 ms as logged by the machine that generated the
+frozen dataset, 23.1 ms re-measured on the current hardware, §8.2; worst energy balance
+6e-12, peak temperatures 296–973 K). The POD of the 410 training snapshots delivers the project's first headline:
 
 | $r$ | $\sigma_r/\sigma_1$ | reconstruction error (test) |
 | ---: | ---: | ---: |
@@ -277,27 +295,31 @@ Rank sweep (rel L² / residual):
 
 The parent's non-monotonicity lesson recurs *in extremis*: mode 3 is numerically dead
 ($\sigma_3/\sigma_1 \sim 10^{-8}$) and modes 4–5 are pure round-off, so ranks beyond 2 make
-the network fit noise and measurably degrade both metrics. Model selection by validation
+the network fit noise and measurably degrade both metrics. Model selection by held-out
 error, not by σ-decay alone, picks r = 2.
 
 ### 8.2 Timing: latency vs throughput
 
 BenchmarkTools medians, batch size = 102. Speed-ups are batched throughput over FOM Newton
 solves, including POD reconstruction (and unscaling for the direct model), excluding plotting
-and model loading, after warm-up:
+and model loading, after warm-up. *Hardware, for every timing in this report:* AMD Ryzen
+AI 9 HX 370 (CPU only; the iGPU is unused), 1 Julia thread, 12 BLAS threads, Julia 1.12.6,
+re-measured 2026-07-09. The frozen data artifacts were generated on earlier hardware,
+whose dataset log shows a median 49 ms Newton solve (§5); all timings quoted here are
+from the current machine.
 
 | method | single (ms) | batched (ms/q) | single× | batched× | allocs (1-q) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| FOM solve | 49.4 | — | 1× | — | 188,945 |
-| direct MLP | 0.086 | 0.0074 | 576× | 6,711× | 22 |
-| POD-MLP | 0.011 | 0.0050 | 4,468× | 9,923× | 31 |
-| POD-KAN | 0.011 | 0.0045 | 4,541× | 10,899× | 90 |
+| FOM solve | 23.1 | — | 1× | — | 188,945 |
+| direct MLP | 0.013 | 0.0032 | 1,796× | 7,259× | 22 |
+| POD-MLP | 0.004 | 0.0026 | 5,270× | 8,852× | 31 |
+| POD-KAN | 0.006 | 0.0025 | 4,159× | 9,104× | 90 |
 
 The 10³–10⁴× factors are larger than the parent's because the FOM is now a nonlinear solve;
 that is the honest framing: surrogate value grows with FOM cost. The headline of the method
 remains the structure (rank-2 basis, physics metrics), not the raw speed-up.
 
-### 8.3 Transient validation
+### 8.3 Transient verification
 
 Fixed-Δt convergence against a tight FBDF reference (smooth sinusoidal load): ImplicitEuler
 rates 0.954/0.967/0.980, Trapezoid 2.077/2.017/2.004. The θ-family behaves exactly as
@@ -318,8 +340,8 @@ sawtooths over ~60 K.*
 
 96 Sobol trajectories over $\mu = (\varepsilon, Q_p, \text{duty}, \text{period})$, three
 load periods each, 61 phase-uniform states, started from the steady state at the cycle-mean
-load (median transient FOM solve 13 s, about 270× the steady solve; this is what makes a
-transient surrogate worth having). The space-time POD delivers the promised contrast to §5:
+load (median transient FOM solve 13 s on the dataset-generating machine, about 270× its
+steady solve; this cost asymmetry is what makes a transient surrogate worth having). The space-time POD delivers the promised contrast to §5:
 instead of a rank-3 cliff, a smooth spectrum with
 $\sigma_4/\sigma_1 = 6.4\cdot10^{-3}$, $\sigma_8/\sigma_1 = 3.0\cdot10^{-5}$,
 $\sigma_{16}/\sigma_1 = 6.9\cdot10^{-8}$. **Switching transients re-thicken the manifold.**
@@ -394,9 +416,9 @@ cycle. Two operating points guard against the result being a one-off.
 
 | | OP1: $Q_p$=650 W/m, 5400 s | OP2: $Q_p$=400 W/m, 9000 s |
 | --- | ---: | ---: |
-| FOM sweep (100 candidates) | 1028 s | 937 s |
-| surrogate sweep | 2.9 s (incl. Julia JIT) | **0.088 s** (warm) |
-| throughput | 353× | ≈10,600× |
+| FOM sweep (100 candidates) | 390 s | 390 s |
+| surrogate sweep | 1.77 s (incl. Julia JIT) | **0.048 s** (warm) |
+| throughput | 221× | ≈8,100× |
 | QoI error | median 2.4 K, max 16.5 K | median 2.2 K, max 16.8 K |
 | QoI range | 382–785 K | 320–645 K |
 | Spearman rank correlation | **0.9987** | **0.9988** |
@@ -404,13 +426,17 @@ cycle. Two operating points guard against the result being a one-off.
 | best design | identical (ε=0.90, duty=0.25) | identical (ε=0.90, duty=0.25) |
 
 The throughput asymmetry is compilation, reported rather than hidden: the first sweep pays
-Julia's JIT once; warm sweeps cost ~0.1 s for 100 candidates. The conservative end-to-end
-number is 353×; the warm number is the deployment-relevant one.
+Julia's JIT once; warm sweeps cost ~0.05 s for 100 candidates. The conservative end-to-end
+number is 221×; the warm number is the deployment-relevant one. The FOM reference these
+errors are measured against is itself solid: the steady GCI study (§8.8) bands the
+deployed grid's discretization error on peak temperature at 0.005–0.010 K, and the
+transient reference is integrator-tolerance-controlled (§8.3), both far below the
+2.2–2.4 K median surrogate QoI error quoted here.
 
 ![Design study: worst-case chip temperature maps](../figures/14_design_study.png)
 
 *Worst-case chip temperature over a 10×10 (ε, duty) grid. The surrogate reproduces the FOM
-ranking with Spearman correlation 0.999 at over 350× higher throughput (≈10⁴× warm), with
+ranking with Spearman correlation 0.999 at over 220× higher throughput (≈8×10³× warm), with
 the same best design point (star).*
 
 ![Second operating point](../figures/19_design_study_op2.png)
@@ -458,10 +484,127 @@ in `data/statistics.jld2`.
 
 ![Seed robustness and OOD degradation](../figures/16_robustness.png)
 
+### 8.8 Grid-convergence error bars on the FOM (GCI)
+
+How much of the "FOM truth" is discretization error? Three systematically refined grids
+(60×30 / 120×60 / 240×120, ratio 2), five Sobol $(\varepsilon, Q)$ points, safety factor
+$F_s = 1.25$ (`scripts/24_gci.jl`; predictions pre-registered in the script header, two
+rounds, misses kept). The smooth QoIs converge at exactly the code-verification order:
+the hot-node probe temperature (a fixed vertex of all three grids, equal to the reported
+$T_\text{peak}$ on the deployment grid) shows observed order $\hat p = 1.99$ at all five
+points, and $\|u_h\|_{L^2}$ shows $\hat p = 2.00$ (N = 5 each). Richardson banding puts
+the **deployment-grid discretization error of the peak temperature at median 0.005 K,
+max 0.010 K**: roughly 500× below the surrogate's 2.4 K median design-QoI error (§8.6),
+so the reference the surrogate is judged against is nowhere the limiting error.
+
+The pre-registered round-1 scorecard: one hit, two instructive misses.
+$P_\text{rad}$ is grid-exact as predicted (worst $|P_\text{rad} - Q|/Q = 1.6\cdot
+10^{-12}$ over 15 solves): the chip patch is face-aligned on all three grids and the
+discrete energy balance holds on each, so there is no discretization error to measure.
+The other two round-1 QoIs missed the predicted $\hat p \in [1.7, 2.2]$ band, each for a
+structural reason. The raw nodal-max $T_\text{peak}$ converges *non-monotonically* (−33
+then +1 mK between refinements): the argmax node drifts under refinement, a max is not a
+smooth functional of $h$, and Richardson does not apply to it; the fixed-probe form is
+the correct banding target. And the mean radiating-edge temperature shows no measurable
+grid dependence at all (worst coarse-vs-fine deviation $1.0\cdot10^{-13}$): on this
+tensor-product Q1 grid the $y$-summed discrete system reduces exactly to a 1D problem
+whose data (the $y$-integrated load and the exactly balanced edge flux) are
+grid-independent, pinning the edge mean nodally. A third structural identity in the same
+family as the discrete energy balance. Transient GCI is deferred: the transient
+reference is integrator-tolerance-controlled (§8.3) and is not banded here.
+
+![Grid convergence of the hot-node temperature](../figures/23_gci.png)
+
+### 8.9 Precision audit: what arithmetic does deployment need?
+
+Casting the entire steady inference pipeline (inputs, network weights, whitening scales,
+POD mean and modes) to reduced precision and re-evaluating the 102-sample test set
+(`scripts/25_precision_audit.jl`; predictions pre-registered in the script header):
+
+| pipeline | rel L² | max ΔT_peak (K) | max field drift vs F64 (K) |
+| --- | ---: | ---: | ---: |
+| Float64 | 9.1757e-4 | 3.56 | — |
+| Float32 | 9.1757e-4 | 3.56 | 1.3e-4 |
+| Float16 | 1.0586e-3 | 3.37 | 1.07 |
+
+Float32 is lossless at every reported digit, as pre-registered. The Float16 prediction
+**missed, in the surrogate's favour**: we predicted overflow at reconstruction
+(coefficient scale against the 65,504 Float16 ceiling), but the whitening scales are
+$4.97\cdot10^3$ and $5.71\cdot10^2$, every intermediate stays finite, and the Float16
+pipeline still delivers rel L² 1.06e-3 with ~1 K worst-case field drift: usable,
+marginally degraded. What does fail in Float16, exactly as pre-registered: any $u^4$
+evaluation overflows for $T \ge 65504^{1/4} \approx 16.0$ K, i.e. at 100% of operating
+temperatures. Edge-compute reading: field *inference* is Float32-safe (even
+Float16-tolerant at the $10^{-3}$ level), but the physics-residual check and any QoI
+integrand containing $u^4$ must run in Float32 or wider.
+
+### 8.10 Attractor check: 20 cycles against the 3-cycle deployment contract
+
+The design QoI (§8.6) reads cycle 3 of a 3-cycle run as "the settled cycle". The mapper
+is feedforward in $(\mu, \tau, \text{phase})$, so autoregressive drift is structurally
+impossible; what could fail is the contract itself. Two parameter points, FOM run to 20
+cycles, surrogate predicting its fixed settled-cycle trace by phase mapping
+(`scripts/26_attractor_check.jl`; N = 2, predictions pre-registered in the script
+header; $\tau > 1$ is never queried, it is OOD by the deployment contract):
+
+- **FOM settling (pre-registered, hit).** The cycle-to-cycle peak-T trace change decays
+  geometrically at both points: 22.4 K (c1→2) → 0.34 K (c9→10) → 0.028 K (c19→20), and
+  15.3 → 0.29 → 0.022 K, under the registered 0.5 K-by-cycle-10 and 0.05 K-at-19→20
+  bounds.
+- **Deviation flatness (hit on the registered 2× bound, with one measured
+  qualification).** The per-cycle deviation between the surrogate's fixed settled-cycle
+  trace and FOM cycles 3–20 stays within [0.81, 1.41]× and [0.84, 1.13]× of its cycle-3
+  value (7.4 K and 10.2 K, consistent with the §8.4 error level). It is not constant,
+  though: it rises by +3.0 K and +1.4 K before saturating, and the rise tracks the FOM's
+  own settling tail exactly. Read structurally: the training data's cycle 3 sits 1.4–3 K
+  short of the true attractor at these points. That bias is shared by the FOM sweep and
+  the surrogate in the design study (both read cycle 3), so rankings are unaffected, but
+  absolute worst-case temperatures quoted at "the settled cycle" carry it.
+
+The deployment contract, now explicit and measured: phase features are valid on (or
+near) the attractor; normalized time $\tau > 1$ is out of distribution and guarded, the
+same way `in_training_box` guards the steady $(\varepsilon, Q)$ box.
+
+![Attractor check](../figures/25_attractor_check.png)
+
+### 8.11 Forward UQ with an exact FOM reference
+
+Input uncertainty, stated here and used nowhere else: $\varepsilon \sim
+\mathcal N(0.85, 0.02)$ (coating tolerance around a high-emissivity design point) and
+$Q \sim \mathcal N(600, 50)$ W/m (load uncertainty), both truncated to the training box
+by rejection (acceptance 1.0000 each; 100,000 / 100,000 samples pass `in_training_box`
+by construction). QoI: steady worst-case (peak) temperature
+(`scripts/27_forward_uq.jl`; StableRNG(SEED + 2700); predictions pre-registered in the
+script header). The surrogate propagates N = 100,000 samples in 7.5 s warm; the exact
+FOM reference is N = 10,000 Newton solves (444 s, warm-started, median 44 ms/solve) on
+the *first 10,000 points of the same sample stream*, so the surrogate-vs-FOM deltas
+below are paired and carry no Monte Carlo noise:
+
+| quantile | FOM (N = 10⁴) | surrogate, paired (N = 10⁴) | Δ paired (K) | surrogate (N = 10⁵) |
+| ---: | ---: | ---: | ---: | ---: |
+| 50% | 616.49 | 616.27 | −0.22 | 616.44 |
+| 90% | 649.51 | 649.36 | −0.15 | 650.24 |
+| 99% | 678.24 | 678.93 | +0.68 | 678.68 |
+| 99.7% | 690.66 | 691.36 | +0.71 | 689.10 |
+
+Pre-registered: every paired quantile delta under 4 K (the steady surrogate's max
+peak-T error over the test box). Measured: $|\Delta| \le 0.71$ K at every reported
+quantile, pointwise paired error median 0.29 K, max 0.86 K (N = 10,000), an order of
+magnitude inside the registered bound. The 3σ statement a designer would use: the 99.7%
+quantile of worst-case temperature is 690.7 K by FOM against 689.1 K by the surrogate at
+N = 10⁵, and the paired column shows only +0.7 K of that gap is surrogate error; the
+rest is FOM-side Monte Carlo noise in a thin tail at N = 10⁴. For tail quantiles the
+surrogate's N = 10⁵ estimate is the better-converged one, at a per-sample cost ~60,000×
+below the FOM's. $T_\text{space}$ stays fixed at 3 K throughout: a model-form limitation
+(§10), not a random input; re-training at an Earth-shine effective sink, not sampling
+the sink, is the correct treatment.
+
+![Forward UQ](../figures/26_forward_uq.png)
+
 ## 9. Interactive console
 
 `scripts/14_run_console.jl` (GLMakie) solves the steady FOM *live* while you drag
-$(\varepsilon, Q)$; a 50 ms Newton solve is interactive. Next to it sit the surrogate's
+$(\varepsilon, Q)$; a ~23 ms Newton solve (§8.2) is interactive. Next to it sit the surrogate's
 prediction, the error field, QoI readouts, and both σ-spectra; the transient panel updates
 the surrogate's peak-temperature trace instantly and overlays the true FOM trajectory on
 demand. `CONSOLE_SMOKE=1` renders the same layout headlessly for CI. The console is the
@@ -480,8 +623,15 @@ microscope, not the science.
    differ by ~6×; their PDE residuals differ by ~6,000×. Reporting only L² would hide what
    matters.
 3. The surrogate preserves design rankings (worst-case temperature) at over two orders of
-   magnitude higher throughput end-to-end, making it a practical screening tool for radiator
-   design studies; batched steady field queries reach 10³–10⁴×.
+   magnitude higher throughput end-to-end, making it a practical screening tool inside
+   many-query design loops, in-distribution; batched steady field queries reach 10³–10⁴×.
+4. A methodological marker: a non-intrusive ROM of a strongly nonlinear-BC problem, with
+   an exact Galerkin error decomposition and pre-registered diagnostics, assembled from
+   general-purpose open tooling in an afternoon of glue code. Ten years ago this was
+   utopia: the standard path was an intrusive Galerkin ROM with hand-built
+   hyper-reduction per nonlinearity (DEIM). That it is now routine is a credit to the
+   cited FE and solver ecosystems (Badia & Verdugo 2020; Pal et al. 2024; Rackauckas &
+   Nie 2017).
 
 **Caveats.** 2D, fixed geometry, unity view factor (deep space only), constant properties,
 effective (not measured) $\rho c$, in-distribution queries only (measured: median error
@@ -489,6 +639,28 @@ grows ~17× just outside the training box, worst ~20% at 9% exceedance; §8.7), 
 PDE family: a controlled prototype, not a general theorem. The steady rank-3 result is a property of the
 fixed load geometry, not of radiation physics; parametric load *placement* would re-thicken
 the steady manifold (future work).
+
+**V&V status (ASME V&V 20 vocabulary).** A terminology note first: every comparison in
+this report is *verification*, a computation checked against a more trusted computation
+or an exact structural identity; *validation* would require physical measurement, which
+this prototype does not attempt. The tiers:
+
+| tier | evidence | status |
+| --- | --- | --- |
+| code verification | MMS through the nonlinear BC, observed L² orders 1.9996–2.0000 (§4); nodally exact 1D radiative equilibrium | complete |
+| solution verification | exact discrete energy balance (measured ~1e-10, §4); nonlinear residual metric on every prediction (§7); grid-convergence (GCI) error bands on the FOM QoIs (§8.8) | complete |
+| surrogate verification | held-out errors, rank sweeps, N = 20 seed ensembles, measured OOD degradation, exact Galerkin floor (§8); note surrogate-vs-FOM is verification, not validation | complete |
+| model validation | **unaddressed by design**: 2D section, unity view factor, fixed 3 K deep-space sink, effective ρc; no comparison against measurement or a 3D code | open |
+| uncertainty quantification | forward UQ over (ε, Q) with an exact FOM Monte Carlo reference (§8.11) | complete |
+
+The named model-form gap: $T_\text{space}$ is fixed at 3 K (deep space); in LEO,
+Earth-shine and albedo raise the *effective* sink temperature to roughly 250 K, which
+shifts absolute temperatures. The surrogate is trained at fixed $T_\text{space}$, so this
+is a model-form limitation to re-train against, not a random input to sample (the 3 K
+sink term itself is numerically irrelevant, $T_s^4/u^4 \le 10^{-8}$ over the box). A 3D
+cross-code benchmark is declined on purpose: it would test model form, not this study's
+claims, and MMS is the stronger code-verification instrument; the fin-model variant in
+future work is the natural home for one.
 
 ## 11. Future work
 
