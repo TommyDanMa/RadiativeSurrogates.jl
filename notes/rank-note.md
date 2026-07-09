@@ -211,18 +211,22 @@ constraints. What survives as plausibly ours: (i) the cross-configuration cliff
 reconstruction of §4b (weighted collinearity = POD cliff to ~25% on seven configurations);
 (ii) the parity selection rule as an exact structural constraint; (iii) the §2(a)
 collapses run as pre-registered falsification tests, a move the width literature does not
-make. Sizing received: JOSS regardless. For workshops, ML4PS fits the empirical
-design-study story, while the mechanism material is numerical-analysis-flavored (MORe,
-SIAM CSE/UQ); the venue choice sits downstream. Baseline
-plan: DeepONet only, on the same snapshots; full DEIM dropped, since §6 already delivers
-the Galerkin floor it would provide.
+make. Baseline plan: DeepONet only, on the same snapshots; full DEIM dropped, since §6
+already delivers the Galerkin floor it would provide.
 
 For discussion:
 1. The §4b reconstruction (cliff = amplitude-weighted collinearity of the excited
-   coefficient functions, verified across seven configurations): a short mechanism note,
-   or a paragraph in the workshop paper? We believe it is not in Ballout–Maday–Prud'homme
-   2024; a second pair of eyes on that would help.
-2. Venue: ML4PS for the empirical story vs MORe / SIAM CSE for the mechanism.
+   coefficient functions, verified across seven configurations): worth a standalone short
+   note, or a paragraph in the larger write-up? We believe it is not in
+   Ballout–Maday–Prud'homme 2024; a second pair of eyes on that would help.
+2. The transient thread. The direct $(\mu, t) \to c$ mapper plateaus at 1.7% and is
+   measurably data-limited (learning-curve slopes 0.8–1.1, report §8.4), so the next
+   formulation is probably latent dynamics: $\dot c = f(c, \mu, \text{load}(t))$, eight
+   unknowns, trained through the ODE solver against the same trajectories. The load
+   switches put this squarely in the stiff-neural-ODE regime where naive training is
+   known to fail (Kim, Ji, Deng, Ma & Rackauckas 2021: output scaling, loss choice,
+   stabilized gradients). Is that the right next formulation here, and what training
+   protocol (solver, sensitivity method, loss scaling) would you start from?
 3. DeepONet protocol: same 410 snapshots, equal and 3× parameter budgets, matched
    gradient-step budget, loss curves overlaid, PDE residual as the primary metric, and a
    third arm with the trunk frozen to the POD basis to isolate the basis choice (config B
@@ -247,5 +251,7 @@ For discussion:
   Taylor meets Kolmogorov*, arXiv:2407.03769, 2024.
 - Chaturantabut & Sorensen, *Nonlinear model reduction via discrete empirical
   interpolation*, SIAM J. Sci. Comput., 2010.
+- Kim, Ji, Deng, Ma & Rackauckas, *Stiff neural ordinary differential equations*,
+  Chaos, 2021.
 - Peherstorfer & Willcox, *Data-driven operator inference for nonintrusive
   projection-based model reduction*, CMAME, 2016.
