@@ -1,6 +1,6 @@
 # Why is the steady radiative manifold rank three? A predictive argument, pre-registered
 
-*Working note for discussion. Two pages. Everything here is reproducible from
+*Working note for discussion. Everything here is reproducible from
 `scripts/`; the pre-registered predictions in §3 were written and committed before
 `scripts/19_rank_prediction.jl` was run (see git history).*
 
@@ -17,8 +17,9 @@ $$\sigma_2/\sigma_1 = 1.15\cdot 10^{-1}, \qquad \sigma_3/\sigma_1 = 7.2\cdot 10^
 The manifold is numerically **rank 2 after centering** (three shapes counting the mean),
 despite temperatures spanning 300–970 K and a strongly nonlinear BC. This is not a
 discretization artifact: the ratios replicate on a 2× finer grid (6.7e-9) and with P2
-elements (6.8e-9), and every downstream conclusion survives 5-seed retraining (N = 5,
-StableRNG, seed table in the report appendix).
+elements (6.8e-9), and every downstream conclusion survives 20-seed retraining (N = 20,
+mean ± std in report §8.7; seeds vary the network initialization only, since training is
+full-batch on a fixed Sobol dataset; StableRNG seed table in the report appendix).
 
 ## 2. The argument
 
@@ -99,12 +100,14 @@ the $Q/k$-collapse argument predicted none; none appears, with nine orders of ma
 This is the experiment that distinguishes the structural argument from parameter counting.
 
 **P3 -informative miss.** Shrinking boxes reduces the remainder far more slowly than a
-second-order Taylor term should: log–log slopes 0.18–0.27 on the ε-axis and 0.68 on the
-Q-axis (predicted: at least one axis in [1, 2]). The Q-axis dominance matches the
-edge-flux-nonuniformity mechanism, but the scaling says the parameter box is not in the
-asymptotic small-perturbation regime, so $\sigma_3$ is governed by something coarser than
-the local quadratic remainder. We report this as a miss; understanding the sub-asymptotic
-scaling is the most interesting open thread the experiments produced.
+second-order Taylor term should: fitted log–log slopes $0.22 \pm 0.00$ on the ε-axis and
+$0.66 \pm 0.01$ on the Q-axis, mean ± std over N = 3 independent dataset draws
+(registered prediction: at least one axis in [1, 2]). The replication was added at
+external review; the sampling uncertainty is negligible, so the miss is not a dataset
+artifact. The Q-axis dominance matches the edge-flux-nonuniformity mechanism, but the
+scaling says the parameter box is not in the asymptotic small-perturbation regime, so
+$\sigma_3$ is governed by something coarser than the local quadratic remainder. We
+report this as a miss; §4b locates what actually sets the scale.
 
 ## 4b. Exploratory follow-up (not pre-registered): what sets the cutoff?
 
@@ -124,11 +127,27 @@ it. Three findings:
    $\sigma_3/\sigma_1 = 7\cdot10^{-9}$. Row-normalizing the 12 excited coefficient
    functions $\mu \mapsto \langle v_k, u(\mu)\rangle$ and taking their singular values
    gives 2.5, 2.3, $3.9\cdot10^{-5}$, then machine floor: twelve spatial modes, but only
-   **two independent parameter functions** driving them. Amplitude-weighting that
-   $4\cdot10^{-5}$ equal-weight leakage by the small mode amplitudes reproduces the
-   $10^{-9}$-scale POD ratio.
+   **two independent parameter functions** driving them.
 
 ![Eigenmode diagnostic: response energy vs linearized-operator eigenvalue, with the rejected 1/λ reference and the λ^-1.9 fit](../figures/21_eigenmode_diagnostic.png)
+
+**The quantitative version survives across configurations**
+(`scripts/23_cliff_reconstruction.jl`, exploratory, run after the round-2 review): the
+$(r^*{+}1)$-th singular value of the *amplitude-weighted* excited coefficient functions
+reproduces the measured POD cliff to a uniform ~25% on all seven configurations tested:
+base $5.8$ vs $7.2\cdot10^{-9}$; P1 $6.6$ vs $8.3\cdot10^{-6}$, with $r^* = 3$ detected
+automatically, as the collapse argument demands; P2 $1.9$ vs $2.3\cdot10^{-8}$, $r^*=2$;
+and the four P3 shrink boxes track the box-size dependence. The cliff is therefore
+entirely a property of the dozen excited coefficient functions; nothing beyond the first
+20 eigenmodes contributes at cliff level. One correction to the naive product formula we
+sketched first: leakage × total amplitude of the leaking direction overpredicts by
+$\sim 10^3$, because the equal-weight leaking direction mixes into the large-amplitude
+modes; the cliff is carried by its component *outside* the span of the top-$r^*$ weighted
+directions, which lives at the $\sim 10^{-4}$ relative amplitude of the small modes. In
+one line: **cliff scale = parametric collinearity leakage × the amplitude the independent
+direction actually carries.**
+
+![Cliff reconstruction: predicted (weighted collinearity) vs measured POD cliff across seven configurations](../figures/22_cliff_reconstruction.png)
 
 So the plain spectral-gap hypothesis is rejected, and the open question sharpens: why do
 the coefficient functions of a dozen spatial modes span (almost exactly) a 2-dimensional
@@ -137,7 +156,7 @@ analyticity in those two effective parameters is presumably what compresses the 
 space; that reconnects to the standard width theory, but posed in parameter-function
 space rather than state space. This is the thread we would most like a read on.
 
-## 5. The transient contrast, honestly
+## 5. The transient contrast
 
 Under switching load cycles the space-time manifold re-thickens ($\sigma_8/\sigma_1
 \approx 3\cdot 10^{-5}$, smooth decay over 60 modes). This is *consistent* with the
@@ -176,26 +195,39 @@ bootstrap on per-sample errors, KAN − MLP = +2.0e-3 [1.6, 2.4]e-3 and direct �
 the mapper 200× (2.1e-1), and a random orthonormal basis caps accuracy at exactly its
 own projection floor (2.13e-1), the basis-quality control.
 
-## 7. Questions (updated after one round of external review)
+## 7. Questions (updated after two rounds of external review)
 
-Positioning received so far, which we adopt: the smoothness-to-exponential-decay half of
-§2(b) is standard and ~15 years old (Cohen–DeVore–Schwab 2011; Cohen–DeVore 2016;
-Lassila–Manzoni–Quarteroni–Rozza 2013; Bachmayr–Cohen 2017). The plausibly novel, narrower
-content is: the exact parameter collapses of §2(a) used as falsification tests (P2), the
-hard-cutoff empirics that smooth-decay theory does not obviously produce, and the §4b
-collinearity diagnostic. Sizing suggestion received: a JOSS software paper plus a short
-workshop note (ML4PS at NeurIPS, or a SIAM UQ workshop), growing into a numerical-analysis
-note only if the cutoff mechanism firms up. Baseline plan: DeepONet only, on the same
-snapshots; full DEIM dropped, since §6 already delivers the Galerkin floor it would
-provide.
+Positioning adopted. The smoothness-to-exponential-decay half of §2(b) is standard
+(Cohen–DeVore–Schwab 2011; Cohen–DeVore 2016; Lassila–Manzoni–Quarteroni–Rozza 2013;
+Bachmayr–Cohen 2017; the analytic-in-parameters machinery is Chkifa–Cohen–Schwab 2015).
+The §4b picture is also known *in shape*: many excited spatial modes with few independent
+parameter functions is the linear-width vs intrinsic-dimension gap behind nonlinear and
+compressive reduced bases (Ballout–Maday–Prud'homme 2024; Cohen–Dahmen–Dolbeault–Somacal
+2023 is the closest low-width example in spirit to the $Q/k$ collapse). We read
+Ballout–Maday–Prud'homme in full before claiming anything: they establish complexity
+scaling with the parameter count rather than the $N$-width, but contain no quantitative
+cliff decomposition, no SVD analysis of normalized coefficient functions, and no symmetry
+constraints. What survives as plausibly ours: (i) the cross-configuration cliff
+reconstruction of §4b (weighted collinearity = POD cliff to ~25% on seven configurations);
+(ii) the parity selection rule as an exact structural constraint; (iii) the §2(a)
+collapses run as pre-registered falsification tests, a move the width literature does not
+make. Sizing received: JOSS regardless. For workshops, ML4PS fits the empirical
+design-study story, while the mechanism material is numerical-analysis-flavored (MORe,
+SIAM CSE/UQ); the venue choice sits downstream. Baseline
+plan: DeepONet only, on the same snapshots; full DEIM dropped, since §6 already delivers
+the Galerkin floor it would provide.
 
 For discussion:
-1. Does the §4b picture (many excited spatial modes, two independent parameter functions)
-   correspond to a known statement about analytic parametric families, or is it the seed
-   of the mechanism note?
-2. Sanity-check the sizing: JOSS + ML4PS/SIAM-UQ workshop note?
-3. DeepONet as the single baseline on the same snapshots, equal and 3× parameter budgets:
-   the right call?
+1. The §4b reconstruction (cliff = amplitude-weighted collinearity of the excited
+   coefficient functions, verified across seven configurations): a short mechanism note,
+   or a paragraph in the workshop paper? We believe it is not in Ballout–Maday–Prud'homme
+   2024; a second pair of eyes on that would help.
+2. Venue: ML4PS for the empirical story vs MORe / SIAM CSE for the mechanism.
+3. DeepONet protocol: same 410 snapshots, equal and 3× parameter budgets, matched
+   gradient-step budget, loss curves overlaid, PDE residual as the primary metric, and a
+   third arm with the trunk frozen to the POD basis to isolate the basis choice (config B
+   has no Dirichlet BC, so the classical exact-BC wedge does not apply here). Anything
+   missing?
 
 ## References
 
@@ -207,6 +239,12 @@ For discussion:
   estimates for the approximation of the solution manifold of parametric PDEs*, 2013.
 - Bachmayr & Cohen, *Kolmogorov widths and low-rank approximations of parametric elliptic
   PDEs*, Mathematics of Computation, 2017.
+- Chkifa, Cohen & Schwab, *Breaking the curse of dimensionality in sparse polynomial
+  approximation of parametric PDEs*, J. Math. Pures Appl., 2015.
+- Cohen, Dahmen, Dolbeault & Somacal, *Reduced order modeling for elliptic problems with
+  high contrast diffusion coefficients*, arXiv:2304.10971, 2023.
+- Ballout, Maday & Prud'homme, *Nonlinear compressive reduced basis approximation: when
+  Taylor meets Kolmogorov*, arXiv:2407.03769, 2024.
 - Chaturantabut & Sorensen, *Nonlinear model reduction via discrete empirical
   interpolation*, SIAM J. Sci. Comput., 2010.
 - Peherstorfer & Willcox, *Data-driven operator inference for nonintrusive

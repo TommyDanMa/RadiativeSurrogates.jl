@@ -165,7 +165,9 @@ were pre-registered in `notes/rank-note.md` before running
 cliff moves to $\sigma_4/\sigma_1 = 8.3\cdot10^{-6}$); conductivity as a third parameter
 adds **none** ($\sigma_4/\sigma_1 = 3\cdot10^{-14}$, where naive parameter counting
 predicts a fourth $O(\sigma_2)$ mode); and the box-shrink scaling came out sub-quadratic
-(slopes 0.2–0.7 instead of the predicted [1, 2]), a miss recorded as such in the note.
+(fitted log–log slopes $0.22 \pm 0.00$ on the ε-axis and $0.66 \pm 0.01$ on the Q-axis,
+mean ± std over N = 3 independent dataset draws, instead of the predicted [1, 2]), a miss
+recorded as such in the note and too tightly replicated to be a sampling artifact.
 
 ![Rank predictions](../figures/20_rank_prediction.png)
 
@@ -177,6 +179,14 @@ functions over the parameter box have normalized singular values 2.5, 2.3, 3.9e-
 spatial modes, two independent parameter functions. Details in `notes/rank-note.md` §4b.
 
 ![Eigenmode diagnostic](../figures/21_eigenmode_diagnostic.png)
+
+The quantitative version generalizes (`scripts/23_cliff_reconstruction.jl`): the singular
+value of the amplitude-weighted excited coefficient functions reproduces the measured POD
+cliff to a uniform ~25% across seven configurations (base, both 3-parameter variants with
+$r^*$ detected automatically, and the four shrink boxes), so the cutoff scale is set by
+functional collinearity weighted by the amplitude the independent direction carries.
+
+![Cliff reconstruction across configurations](../figures/22_cliff_reconstruction.png)
 
 Mechanism: with the load geometry fixed, varying $Q$ scales the (linear)
 source-response shape exactly, and varying $\varepsilon$ mostly moves the radiative
@@ -344,8 +354,9 @@ is flat. The two structural levers are a larger trajectory budget and latent *dy
 
 ![Learning curve and per-mode diagnostics](../figures/18_mode_diagnostics.png)
 
-QoI tracking at the deployed $r=8$: peak-temperature error median 14.3 K / max 42.6 K along
-trajectories; radiated-power tracking error median 14% / max 39%. The worst case is
+QoI tracking at the deployed $r=8$ (N = 19 held-out trajectories): peak-temperature error
+median 14.3 K / max 42.6 K along trajectories; radiated-power tracking error median 14% /
+max 39%. The worst case is
 instructive: it is the *low-load* corner ($Q_p = 136$ W/m), where the true
 $P_\text{rad} \approx 94$ W is nearly constant because the radiator's thermal inertia filters
 the square wave almost completely, so a small absolute error is large relative to the local
@@ -410,20 +421,23 @@ one does, in-distribution, with margin.
 
 ### 8.7 Robustness: seeds and out-of-distribution behaviour
 
-Are the headlines one lucky seed? Five fresh training seeds per deployed mapper
+Are the headlines one lucky seed? Twenty fresh training seeds per deployed mapper
 (`scripts/15_robustness.jl`; deployed models keep their rank-keyed seeds, the ensemble is
-reported, not deployed):
+reported, not deployed). The seeds vary the network parameter initialization **only**:
+training is full-batch Adam on the fixed Sobol dataset with a deterministic learning-rate
+schedule, so there is no minibatch or data-draw stochasticity to vary.
 
-| mapper | deployed | 5-seed range |
-| --- | ---: | ---: |
-| POD-MLP r=2 | 9.18e-4 | [9.69e-4, 1.59e-3] |
-| POD-KAN r=2 | 2.92e-3 | [2.28e-3, 3.45e-3] |
-| POD-MLP-t r=8 | 1.74e-2 | [1.57e-2, 2.26e-2] |
+| mapper | deployed | ensemble mean ± std (N = 20) | ensemble [min, max] |
+| --- | ---: | ---: | ---: |
+| POD-MLP r=2 | 9.18e-4 | 1.35e-3 ± 0.18e-3 | [9.69e-4, 1.67e-3] |
+| POD-KAN r=2 | 2.92e-3 | 2.86e-3 ± 0.49e-3 | [1.90e-3, 3.56e-3] |
+| POD-MLP-t r=8 | 1.74e-2 | 1.89e-2 ± 0.20e-2 | [1.53e-2, 2.25e-2] |
 
 Every conclusion survives every seed: the ordering (MLP < KAN, both ≪ direct), the r=2
-optimum, and the transient plateau. One transparency note: the deployed steady MLP happens
-to sit at the favourable edge of its ensemble; all fresh seeds stay within 1.7× of it, and
-the README quotes the spread alongside the headline.
+optimum, and the transient plateau. One transparency note: the deployed steady MLP sits
+at the favourable edge of its ensemble, below all 20 fresh seeds, which stay within 1.9×
+of it; the ensemble mean 1.35e-3 ± 0.18e-3 is the fair "typical seed" number, and the
+README quotes it alongside the headline.
 
 Outside the training box the surrogate degrades *fast*, and now measurably: on 60 points in
 a physically sensible ring (ε down to 0.02, Q up to 1000 W/m), the median error grows from
@@ -499,7 +513,10 @@ unstructured GridapGmsh geometries; 3D; mass-matrix-weighted POD.
 - Operator inference: Peherstorfer & Willcox, Comput. Methods Appl. Mech. Eng. 2016.
 - Parametric regularity and widths: Cohen, DeVore & Schwab, Anal. Appl. 2011; Cohen &
   DeVore, IMA J. Numer. Anal. 2016; Lassila, Manzoni, Quarteroni & Rozza 2013; Bachmayr &
-  Cohen, Math. Comp. 2017.
+  Cohen, Math. Comp. 2017; Chkifa, Cohen & Schwab, J. Math. Pures Appl. 2015.
+- Nonlinear/compressive reduced bases (linear width vs intrinsic dimension): Ballout,
+  Maday & Prud'homme, arXiv:2407.03769, 2024; Cohen, Dahmen, Dolbeault & Somacal,
+  arXiv:2304.10971, 2023.
 - Kolmogorov–Arnold networks: Liu et al., 2024; `KolmogorovArnold.jl`.
 - Parent project: [TommyDanMa/afw](https://github.com/TommyDanMa/afw), *Learning PDE
   Solution Operators in the Right Basis* (report in `report/report.md` there).

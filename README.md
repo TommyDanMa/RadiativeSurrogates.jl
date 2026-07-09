@@ -84,8 +84,10 @@ button-press away:
 POD floor at r=2: 1.1e-9 (basis ≠ bottleneck). Speed-ups: batched throughput over FOM Newton
 solves, incl. reconstruction, excl. plotting/model loading, after warm-up (BenchmarkTools
 medians, batch = 102). Coefficients are trained **whitened**; the rank cliff gives c a ~1e9
-dynamic range. Robustness (report §8.7): 5-seed ranges POD-MLP [0.97, 1.6]e-3, POD-KAN
-[2.3, 3.5]e-3, transient [1.6, 2.3]e-2; the rank-3 cliff replicates at 120×60 and with P2
+dynamic range. Robustness (report §8.7; N = 20 fresh seeds varying network init only):
+POD-MLP 1.35e-3 ± 0.18e-3 (the deployed 9.2e-4 sits at the favourable edge of the
+ensemble), POD-KAN 2.86e-3 ± 0.49e-3, transient 1.89e-2 ± 0.20e-2; the rank-3 cliff
+replicates at 120×60 and with P2
 elements; out-of-distribution the median error grows ~17× just outside the box, so queries
 should stay inside `in_training_box`.
 

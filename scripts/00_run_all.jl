@@ -1,7 +1,8 @@
 # One-command reproduction: runs scripts 01–18 in order, each in a fresh Julia
 # process (no cross-script global state), with per-script timing. Full
-# regeneration takes on the order of 2 hours, dominated by the transient
-# dataset (08) and the two design-study FOM sweeps (13).
+# regeneration takes on the order of 5 hours, dominated by the N = 20 seed
+# ensembles (15, ~3 h), the transient dataset (08) and the two design-study
+# FOM sweeps (13).
 #
 #   julia --project=non-linear non-linear/scripts/00_run_all.jl
 
@@ -30,6 +31,7 @@ scripts = [
     "20_statistics.jl",
     "21_galerkin_floor.jl",
     "22_eigenmode_diagnostic.jl",
+    "23_cliff_reconstruction.jl",
     "18_report_numbers.jl",   # last: prints every table for diffing against the report
 ]
 

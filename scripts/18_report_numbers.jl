@@ -51,13 +51,13 @@ end
 
 if need(joinpath(DATA_DIR, "robustness.jld2"))
     rb = load(joinpath(DATA_DIR, "robustness.jld2"))
-    println("## §8.7 robustness")
-    @printf("POD-MLP  r=%d: deployed %.2e, 5-seed [%.2e, %.2e]\n", DEFAULT_R,
-            rb["dep_mlp"], minimum(rb["mlp_rels"]), maximum(rb["mlp_rels"]))
-    @printf("POD-KAN  r=%d: deployed %.2e, 5-seed [%.2e, %.2e]\n", DEFAULT_R,
-            rb["dep_kan"], minimum(rb["kan_rels"]), maximum(rb["kan_rels"]))
-    @printf("POD-MLP-t r=%d: deployed %.2e, 5-seed [%.2e, %.2e]\n", DEFAULT_R_T,
-            rb["dep_t"], minimum(rb["t_rels"]), maximum(rb["t_rels"]))
+    println("## §8.7 robustness (seed ensembles, N = $(length(rb["mlp_rels"])))")
+    seedline(label, r, dep, rels) =
+        @printf("%s r=%d: deployed %.2e, mean %.2e ± %.1e, [%.2e, %.2e]\n",
+                label, r, dep, mean(rels), std(rels), minimum(rels), maximum(rels))
+    seedline("POD-MLP  ", DEFAULT_R, rb["dep_mlp"], rb["mlp_rels"])
+    seedline("POD-KAN  ", DEFAULT_R, rb["dep_kan"], rb["kan_rels"])
+    seedline("POD-MLP-t", DEFAULT_R_T, rb["dep_t"], rb["t_rels"])
     @printf("OOD: in-box median %.1e; outside median %.1e, worst %.1e\n\n",
             median(rb["in_rel"]), median(rb["ood_rel"]), maximum(rb["ood_rel"]))
 end
@@ -97,9 +97,26 @@ if need(joinpath(DATA_DIR, "rank_prediction.jld2"))
     @printf("P1 (ε,Q1,Q2): σ3 %.1e  σ4 %.1e  σ5 %.1e\n",
             rp["d_p1"][3], rp["d_p1"][4], rp["d_p1"][5])
     @printf("P2 (ε,Q,k):   σ3 %.1e  σ4 %.1e\n", rp["d_p2"][3], rp["d_p2"][4])
-    @printf("P3 σ3 ε-shrink: %s | Q-shrink: %s\n\n",
+    @printf("P3 σ3 ε-shrink: %s | Q-shrink: %s\n",
             join((@sprintf("%.1e", v) for v in rp["sig3_eps"]), " "),
             join((@sprintf("%.1e", v) for v in rp["sig3_Q"]), " "))
+    if haskey(rp, "slopes_eps")
+        @printf("P3 fitted slopes (N = %d dataset draws): ε %.2f ± %.2f | Q %.2f ± %.2f\n",
+                rp["n_draws"], mean(rp["slopes_eps"]), std(rp["slopes_eps"]),
+                mean(rp["slopes_Q"]), std(rp["slopes_Q"]))
+    end
+    println()
+end
+
+if need(joinpath(DATA_DIR, "cliff_reconstruction.jld2"))
+    cr = load(joinpath(DATA_DIR, "cliff_reconstruction.jld2"))
+    println("## note §4b cliff reconstruction (weighted collinearity vs measured POD)")
+    for i in eachindex(cr["names"])
+        @printf("%-12s r*=%d  recon %.1e  meas %.1e  (recon/meas %.2f;  naive %.1e)\n",
+                cr["names"][i], cr["rstar"][i], cr["recon"][i], cr["measured"][i],
+                cr["recon"][i] / cr["measured"][i], cr["naive"][i])
+    end
+    println()
 end
 
 if need(joinpath(DATA_DIR, "statistics.jld2"))

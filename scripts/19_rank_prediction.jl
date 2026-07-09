@@ -22,8 +22,8 @@ source2(Q2) = x -> (PATCH2[1] <= x[1] <= PATCH2[2] &&
                     PATCH2[3] <= x[2] <= PATCH2[4]) ? Q2 / area2 : 0.0
 
 "POD σ-spectrum (normalized) of NS Sobol solves with per-sample solver kwargs."
-function spectrum(NS, lb, ub; solvekw)
-    mus = QuasiMonteCarlo.sample(NS, lb, ub, SobolSample())
+function spectrum(NS, lb, ub; solvekw, sampler = SobolSample())
+    mus = QuasiMonteCarlo.sample(NS, lb, ub, sampler)
     U = Matrix{Float64}(undef, fom.n, NS)
     for i in 1:NS
         s = solve_steady(fom; solvekw(mus[:, i])..., abstol = 1e-9)
@@ -46,36 +46,59 @@ d_p2 = spectrum(384, [EPS_RANGE[1], Q_RANGE[1], 2.0],
                 solvekw = m -> (eps_r = m[1], Q = m[2], k = m[3]))
 @printf("P2 (ε,Q,k):    σ2 %.2e  σ3 %.2e  σ4 %.2e  σ5 %.2e\n", d_p2[2:5]...)
 
-# ----- P3: box shrinking ----------------------------------------------------------------
+# ----- P3: box shrinking, N_DRAWS independent dataset draws ----------------------------
+# Draw 1 is the registered run, bit-for-bit (deterministic Sobol). Draws 2..N_DRAWS use
+# Owen-scrambled Sobol with listed StableRNG seeds, so the log-log slopes carry a
+# dataset-sampling uncertainty. Replication added at external review: it strengthens the
+# reported miss, the registered prediction itself is untouched.
 εc, Qc = 0.525, 450.0
 εh_full, Qh_full = 0.425, 350.0
 fracs = (1.0, 0.5, 0.25)
-sig3_eps = Float64[]
-sig3_Q = Float64[]
-for fr in fracs
+N_DRAWS = 3
+samplers = Any[SobolSample()]
+for j in 2:N_DRAWS
+    push!(samplers, SobolSample(R = OwenScramble(base = 2, pad = 32,
+                                                 rng = StableRNG(SEED + 9100 + j))))
+end
+sig3_eps = zeros(length(fracs), N_DRAWS)
+sig3_Q = zeros(length(fracs), N_DRAWS)
+for (jd, smp) in enumerate(samplers), (jf, fr) in enumerate(fracs)
     dε = spectrum(256, [εc - fr * εh_full, Q_RANGE[1]],
                   [εc + fr * εh_full, Q_RANGE[2]];
-                  solvekw = m -> (eps_r = m[1], Q = m[2]))
-    push!(sig3_eps, dε[3])
+                  solvekw = m -> (eps_r = m[1], Q = m[2]), sampler = smp)
+    sig3_eps[jf, jd] = dε[3]
     dQ = spectrum(256, [EPS_RANGE[1], Qc - fr * Qh_full],
                   [EPS_RANGE[2], Qc + fr * Qh_full];
-                  solvekw = m -> (eps_r = m[1], Q = m[2]))
-    push!(sig3_Q, dQ[3])
+                  solvekw = m -> (eps_r = m[1], Q = m[2]), sampler = smp)
+    sig3_Q[jf, jd] = dQ[3]
 end
 slope(v) = [log2(v[i] / v[i+1]) for i in 1:length(v)-1]
-@printf("P3 ε-shrink:  σ3/σ1 %s   slopes %s\n",
-        join((@sprintf("%.2e", s) for s in sig3_eps), "  "),
-        join((@sprintf("%.2f", s) for s in slope(sig3_eps)), "  "))
-@printf("P3 Q-shrink:  σ3/σ1 %s   slopes %s\n",
-        join((@sprintf("%.2e", s) for s in sig3_Q), "  "),
-        join((@sprintf("%.2f", s) for s in slope(sig3_Q)), "  "))
+"Least-squares slope of log2(σ3/σ1) against log2(box fraction)."
+function lsq_slope(v)
+    x, y = log2.(collect(fracs)), log2.(v)
+    return (length(x) * sum(x .* y) - sum(x) * sum(y)) /
+           (length(x) * sum(x .^ 2) - sum(x)^2)
+end
+slopes_eps = [lsq_slope(sig3_eps[:, jd]) for jd in 1:N_DRAWS]
+slopes_Q = [lsq_slope(sig3_Q[:, jd]) for jd in 1:N_DRAWS]
+@printf("P3 ε-shrink (draw 1):  σ3/σ1 %s   segment slopes %s\n",
+        join((@sprintf("%.2e", s) for s in sig3_eps[:, 1]), "  "),
+        join((@sprintf("%.2f", s) for s in slope(sig3_eps[:, 1])), "  "))
+@printf("P3 Q-shrink (draw 1):  σ3/σ1 %s   segment slopes %s\n",
+        join((@sprintf("%.2e", s) for s in sig3_Q[:, 1]), "  "),
+        join((@sprintf("%.2f", s) for s in slope(sig3_Q[:, 1])), "  "))
+@printf("P3 fitted slopes over N = %d dataset draws:  ε %.2f ± %.2f   Q %.2f ± %.2f\n",
+        N_DRAWS, mean(slopes_eps), std(slopes_eps), mean(slopes_Q), std(slopes_Q))
 
 base = load_pod()
 d_base = base.P.svals ./ base.P.svals[1]
 
 jldsave(joinpath(DATA_DIR, "rank_prediction.jld2");
         d_base = d_base[1:12], d_p1 = d_p1[1:12], d_p2 = d_p2[1:12],
-        fracs = collect(fracs), sig3_eps, sig3_Q)
+        fracs = collect(fracs),
+        sig3_eps = sig3_eps[:, 1], sig3_Q = sig3_Q[:, 1],
+        sig3_eps_draws = sig3_eps, sig3_Q_draws = sig3_Q,
+        slopes_eps, slopes_Q, n_draws = N_DRAWS)
 
 fig = Figure(size = (940, 400))
 ax1 = Axis(fig[1, 1]; yscale = log10, xlabel = "mode index r", ylabel = "σᵣ/σ₁",
@@ -85,10 +108,17 @@ scatterlines!(ax1, 1:8, max.(d_p1[1:8], 1e-17); label = "μ = (ε, Q₁, Q₂)  
 scatterlines!(ax1, 1:8, max.(d_p2[1:8], 1e-17); label = "μ = (ε, Q, k)  [P2]")
 axislegend(ax1; position = :rt)
 ax2 = Axis(fig[1, 2]; xscale = log2, yscale = log10, xlabel = "box fraction",
-           ylabel = "σ₃/σ₁", title = "Remainder vs box size [P3]")
-scatterlines!(ax2, collect(fracs), sig3_eps; label = "shrink ε-box")
-scatterlines!(ax2, collect(fracs), sig3_Q; label = "shrink Q-box")
-lines!(ax2, collect(fracs), sig3_eps[1] .* collect(fracs) .^ 2;
+           ylabel = "σ₃/σ₁",
+           title = "Remainder vs box size [P3], N = $(N_DRAWS) dataset draws")
+for jd in 2:N_DRAWS
+    lines!(ax2, collect(fracs), sig3_eps[:, jd]; color = (:steelblue, 0.35))
+    lines!(ax2, collect(fracs), sig3_Q[:, jd]; color = (:orange, 0.35))
+end
+scatterlines!(ax2, collect(fracs), sig3_eps[:, 1]; color = :steelblue,
+              label = "shrink ε-box")
+scatterlines!(ax2, collect(fracs), sig3_Q[:, 1]; color = :orange,
+              label = "shrink Q-box")
+lines!(ax2, collect(fracs), sig3_eps[1, 1] .* collect(fracs) .^ 2;
        linestyle = :dash, color = :gray, label = "slope 2")
 axislegend(ax2; position = :rb)
 save(joinpath(FIG_DIR, "20_rank_prediction.png"), fig)

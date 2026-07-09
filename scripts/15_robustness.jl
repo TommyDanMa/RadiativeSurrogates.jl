@@ -1,7 +1,10 @@
 # Robustness of the headline numbers.
-#   Part 1 — seed ensembles: retrain the deployed mappers from 5 fresh seeds and
-#   report the spread (the deployed models keep their rank-keyed seeds; the
-#   ensemble is reported, not deployed).
+#   Part 1 — seed ensembles: retrain the deployed mappers from NSEEDS fresh seeds
+#   and report mean ± std plus the full spread (the deployed models keep their
+#   rank-keyed seeds; the ensemble is reported, not deployed). Seeds vary the
+#   network parameter initialization ONLY: training is full-batch Adam on the
+#   fixed Sobol dataset with a deterministic learning-rate schedule, so there is
+#   no minibatch or data-draw stochasticity.
 #   Part 2 — out-of-distribution probe: evaluate the deployed steady surrogate on
 #   a ring outside the training box, so the "in-distribution only" caveat becomes
 #   a measured statement.
@@ -13,7 +16,7 @@ CairoMakie.activate!()
 
 println("=== 15_robustness ===")
 
-NSEEDS = 5
+NSEEDS = 20
 
 # ----- part 1a: steady seed ensembles ----------------------------------------------
 d = load_snapshots()
@@ -88,13 +91,13 @@ dep_kan = ev["results"]["pod_kan"][:rel]
 evt = load(eval_t_path())
 dep_t = evt["sweep_rel"][findfirst(==(rt), evt["ranks"])]
 
-@printf("\nseed spreads (deployed value first):\n")
-@printf("  POD-MLP  r=%d: %.3e   ensemble [%.3e, %.3e]\n",
-        r, dep_mlp, minimum(mlp_rels), maximum(mlp_rels))
-@printf("  POD-KAN  r=%d: %.3e   ensemble [%.3e, %.3e]\n",
-        r, dep_kan, minimum(kan_rels), maximum(kan_rels))
-@printf("  POD-MLP-t r=%d: %.3e   ensemble [%.3e, %.3e]\n",
-        rt, dep_t, minimum(t_rels), maximum(t_rels))
+@printf("\nseed ensembles, N = %d (deployed value first):\n", NSEEDS)
+@printf("  POD-MLP  r=%d: %.3e   mean %.3e ± %.1e   [%.3e, %.3e]\n",
+        r, dep_mlp, mean(mlp_rels), std(mlp_rels), minimum(mlp_rels), maximum(mlp_rels))
+@printf("  POD-KAN  r=%d: %.3e   mean %.3e ± %.1e   [%.3e, %.3e]\n",
+        r, dep_kan, mean(kan_rels), std(kan_rels), minimum(kan_rels), maximum(kan_rels))
+@printf("  POD-MLP-t r=%d: %.3e   mean %.3e ± %.1e   [%.3e, %.3e]\n",
+        rt, dep_t, mean(t_rels), std(t_rels), minimum(t_rels), maximum(t_rels))
 
 # ----- part 2: out-of-distribution probe -------------------------------------------
 fom = build_steady_fom(CFG)
@@ -141,7 +144,7 @@ jldsave(joinpath(DATA_DIR, "robustness.jld2");
 fig = Figure(size = (900, 380))
 ax1 = Axis(fig[1, 1]; yscale = log10, ylabel = "test rel. L²",
            xticks = (1:3, ["POD-MLP r=$r", "POD-KAN r=$r", "POD-MLP-t r=$rt"]),
-           title = "Seed robustness (5 fresh seeds + deployed)")
+           title = "Seed robustness ($(NSEEDS) fresh seeds + deployed)")
 for (i, (rels, dep)) in enumerate(((mlp_rels, dep_mlp), (kan_rels, dep_kan),
                                    (t_rels, dep_t)))
     scatter!(ax1, fill(i, length(rels)), rels; color = (:steelblue, 0.7))
