@@ -11,7 +11,7 @@ need(f) = isfile(f) || (println("missing $(basename(f)); run its script first\n"
 
 if need(eval_path())
     ev = load(eval_path())
-    println("## §8.1 steady evaluation (deployed r = $(DEFAULT_R))")
+    println("## §7.2 steady evaluation (deployed r = $(DEFAULT_R))")
     @printf("POD floor: rel L² %.1e, residual %.1e; FOM residual floor %.1e; FOM %.0f ms\n",
             ev["floor_rel"], ev["floor_resid"], ev["fom_resid"], ev["fom_ms"])
     for name in ("direct_mlp", "pod_mlp", "pod_kan")
@@ -31,7 +31,7 @@ end
 
 if need(joinpath(DATA_DIR, "benchmark.jld2"))
     b = load(joinpath(DATA_DIR, "benchmark.jld2"))
-    println("## §8.2 benchmark (batch = $(b["batch"]), FOM $(round(b["t_fom_ms"], digits=1)) ms)")
+    println("## §9.1 benchmark (batch = $(b["batch"]), FOM $(round(b["t_fom_ms"], digits=1)) ms)")
     haskey(b, "cpu") && @printf("hardware: %s | %d Julia threads | %d BLAS threads | Julia %s\n",
                                 b["cpu"], b["threads"], b["blas_threads"], b["julia"])
     for (i, nm) in enumerate(b["names"])
@@ -43,7 +43,7 @@ end
 
 if need(eval_t_path())
     et = load(eval_t_path())
-    println("## §8.4 transient sweep (deployed r = $(et["deployed_r"]))")
+    println("## §8.2 transient sweep (deployed r = $(et["deployed_r"]))")
     for (i, r) in enumerate(et["ranks"])
         @printf("| %d | %.2e | %.1e |\n", r, et["sweep_rel"][i], et["floor_rel"][i])
     end
@@ -53,7 +53,7 @@ end
 
 if need(joinpath(DATA_DIR, "robustness.jld2"))
     rb = load(joinpath(DATA_DIR, "robustness.jld2"))
-    println("## §8.7 robustness (seed ensembles, N = $(length(rb["mlp_rels"])))")
+    println("## A.1 robustness (seed ensembles, N = $(length(rb["mlp_rels"])))")
     seedline(label, r, dep, rels) =
         @printf("%s r=%d: deployed %.2e, mean %.2e ± %.1e, [%.2e, %.2e]\n",
                 label, r, dep, mean(rels), std(rels), minimum(rels), maximum(rels))
@@ -66,14 +66,14 @@ end
 
 if need(joinpath(DATA_DIR, "grid_independence.jld2"))
     g = load(joinpath(DATA_DIR, "grid_independence.jld2"))
-    println("## §5 grid independence (σ₃/σ₁)")
+    println("## §4 grid independence (σ₃/σ₁)")
     @printf("60×30 P1 %.1e | 120×60 P1 %.1e | 60×30 P2 %.1e\n\n",
             g["d_base"][3], g["d_fine"][3], g["d_p2"][3])
 end
 
 if need(joinpath(DATA_DIR, "design_study.jld2"))
     ds = load(joinpath(DATA_DIR, "design_study.jld2"))
-    println("## §8.6 design studies")
+    println("## §9.2 design studies")
     for op in ds["ops"]
         @printf("Qp=%.0f, per=%.0f: %d cands, FOM %.0f s vs sur %.2f s (%.0f×), Spearman %.4f, top-5 %d/5, QoI err med %.1f K max %.1f K\n",
                 op[:Qp], op[:period], length(op[:fomQ]), op[:t_fom], op[:t_sur],
@@ -86,7 +86,7 @@ end
 
 if need(joinpath(DATA_DIR, "mapper_diagnostics.jld2"))
     md_ = load(joinpath(DATA_DIR, "mapper_diagnostics.jld2"))
-    println("## §8.4 learning curve")
+    println("## §8.2 learning curve")
     for (M, e) in zip(md_["sizes"], md_["lc"])
         @printf("| %d trajectories | %.2e |\n", M, e)
     end
@@ -95,7 +95,7 @@ end
 
 if need(joinpath(DATA_DIR, "rank_prediction.jld2"))
     rp = load(joinpath(DATA_DIR, "rank_prediction.jld2"))
-    println("## §5 rank predictions (note §4)")
+    println("## §6 rank predictions (note §4)")
     @printf("P1 (ε,Q1,Q2): σ3 %.1e  σ4 %.1e  σ5 %.1e\n",
             rp["d_p1"][3], rp["d_p1"][4], rp["d_p1"][5])
     @printf("P2 (ε,Q,k):   σ3 %.1e  σ4 %.1e\n", rp["d_p2"][3], rp["d_p2"][4])
@@ -112,7 +112,7 @@ end
 
 if need(joinpath(DATA_DIR, "cliff_reconstruction.jld2"))
     cr = load(joinpath(DATA_DIR, "cliff_reconstruction.jld2"))
-    println("## note §4b cliff reconstruction (weighted collinearity vs measured POD)")
+    println("## §6 cliff reconstruction (note §4b; weighted collinearity vs measured POD)")
     for i in eachindex(cr["names"])
         @printf("%-12s r*=%d  recon %.1e  meas %.1e  (recon/meas %.2f;  naive %.1e)\n",
                 cr["names"][i], cr["rstar"][i], cr["recon"][i], cr["measured"][i],
@@ -123,7 +123,7 @@ end
 
 if need(joinpath(DATA_DIR, "statistics.jld2"))
     st = load(joinpath(DATA_DIR, "statistics.jld2"))
-    println("## §8.7 statistics (B = $(st["nboot"]))")
+    println("## A.1 statistics (B = $(st["nboot"]))")
     for c in st["sp_cis"]
         @printf("Spearman (Qp=%.0f): %.4f [%.4f, %.4f]\n", c[:Qp], c[:m], c[:lo], c[:hi])
     end
@@ -133,7 +133,7 @@ end
 
 if need(joinpath(DATA_DIR, "galerkin_floor.jld2"))
     gf = load(joinpath(DATA_DIR, "galerkin_floor.jld2"))
-    println("## §8.1 error decomposition")
+    println("## §7.3 error decomposition")
     for (i, r) in enumerate(gf["ranks"])
         @printf("| %d | %.2e | %.2e | %.2e |\n", r,
                 gf["proj_floor"][i], gf["gal_rel"][i], gf["mlp_rel"][i])
@@ -142,7 +142,7 @@ end
 
 if need(joinpath(DATA_DIR, "eigenmode_diagnostic.jld2"))
     eg = load(joinpath(DATA_DIR, "eigenmode_diagnostic.jld2"))
-    println("\n## note §4b eigenmode diagnostic")
+    println("\n## §6 eigenmode diagnostic (note §4b)")
     @printf("power-law fit α ~ λ^-%.2f; excited modes: %s\n",
             eg["p_powerlaw"], join(string.(eg["excited"]), ","))
     @printf("collinearity svals: %s\n",
@@ -152,7 +152,7 @@ end
 if need(joinpath(DATA_DIR, "gci.jld2"))
     gc = load(joinpath(DATA_DIR, "gci.jld2"))
     gci_ok(v) = filter(!isnan, v)
-    println("\n## §8.8 GCI error bars (Fs = $(gc["fs"]), grids 60×30 → 240×120)")
+    println("\n## A.2 GCI error bars (Fs = $(gc["fs"]), grids 60×30 → 240×120)")
     @printf("T_probe p̂: %s\n",
             join((@sprintf("%.2f", p) for p in gci_ok(gc["phat"][:, 1])), ", "))
     @printf("u_L2 p̂: %s\n",
@@ -167,7 +167,7 @@ end
 
 if need(joinpath(DATA_DIR, "precision_audit.jld2"))
     pa = load(joinpath(DATA_DIR, "precision_audit.jld2"))
-    println("\n## §8.9 precision audit (N = $(pa["ntest"]) test samples)")
+    println("\n## A.3 precision audit (N = $(pa["ntest"]) test samples)")
     @printf("F64: rel L² %.4e | ΔT_peak max %.2f K | ΔP/P max %.2e\n",
             pa["rel"]["F64"], pa["dT_max"]["F64"], pa["dP_max"]["F64"])
     @printf("F32: rel L² %.4e | ΔT_peak max %.2f K | ΔP/P max %.2e | field drift vs F64 %.1e K\n",
@@ -182,7 +182,7 @@ end
 
 if need(joinpath(DATA_DIR, "attractor_check.jld2"))
     at = load(joinpath(DATA_DIR, "attractor_check.jld2"))
-    println("\n## §8.10 attractor check ($(at["ncycles"]) FOM cycles, N = $(length(at["points"])) points)")
+    println("\n## A.4 attractor check ($(at["ncycles"]) FOM cycles, N = $(length(at["points"])) points)")
     for (i, p) in enumerate(at["points"])
         dev, chg = at["dev"][i], at["chg"][i]
         @printf("ε=%.2f Qp=%.0f duty=%.2f per=%.0f: dev(3) %.2f K, dev c3–20 ∈ [%.2f, %.2f] K; FOM settle c1→2 %.3f K, c19→20 %.4f K\n",
@@ -193,7 +193,7 @@ end
 
 if need(joinpath(DATA_DIR, "forward_uq.jld2"))
     uq = load(joinpath(DATA_DIR, "forward_uq.jld2"))
-    @printf("\n## §8.11 forward UQ (ε ~ N(%.2f, %.2f), Q ~ N(%.0f, %.0f) W/m; sur N = %d, FOM N = %d)\n",
+    @printf("\n## A.5 forward UQ (ε ~ N(%.2f, %.2f), Q ~ N(%.0f, %.0f) W/m; sur N = %d, FOM N = %d)\n",
             uq["eps_mean"], uq["eps_std"], uq["q_mean"], uq["q_std"],
             uq["n_sur"], uq["n_fom"])
     for (i, q) in enumerate(uq["quants"])

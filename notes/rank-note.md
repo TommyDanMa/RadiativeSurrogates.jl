@@ -18,7 +18,7 @@ The manifold is numerically **rank 2 after centering** (three shapes counting th
 despite temperatures spanning 300–970 K and a strongly nonlinear BC. This is not a
 discretization artifact: the ratios replicate on a 2× finer grid (6.7e-9) and with P2
 elements (6.8e-9), and every downstream conclusion survives 20-seed retraining (N = 20,
-mean ± std in report §8.7; seeds vary the network initialization only, since training is
+mean ± std in report A.1; seeds vary the network initialization only, since training is
 full-batch on a fixed Sobol dataset; StableRNG seed table in the report appendix).
 
 ## 2. The argument
@@ -202,9 +202,9 @@ Positioning adopted. The smoothness-to-exponential-decay half of §2(b) is stand
 Bachmayr–Cohen 2017; the analytic-in-parameters machinery is Chkifa–Cohen–Schwab 2015).
 The §4b picture is also known *in shape*: many excited spatial modes with few independent
 parameter functions is the linear-width vs intrinsic-dimension gap behind nonlinear and
-compressive reduced bases (Ballout–Maday–Prud'homme 2024; Cohen–Dahmen–Dolbeault–Somacal
+compressive reduced bases (Prud'homme–Maday–Ballout 2024; Cohen–Dolbeault–Somacal–Dahmen
 2023 is the closest low-width example in spirit to the $Q/k$ collapse). We read
-Ballout–Maday–Prud'homme in full before claiming anything: they establish complexity
+Prud'homme–Maday–Ballout in full before claiming anything: they establish complexity
 scaling with the parameter count rather than the $N$-width, but contain no quantitative
 cliff decomposition, no SVD analysis of normalized coefficient functions, and no symmetry
 constraints. What survives as plausibly ours: (i) the cross-configuration cliff
@@ -218,9 +218,9 @@ For discussion:
 1. The §4b reconstruction (cliff = amplitude-weighted collinearity of the excited
    coefficient functions, verified across seven configurations): worth a standalone short
    note, or a paragraph in the larger write-up? We believe it is not in
-   Ballout–Maday–Prud'homme 2024; a second pair of eyes on that would help.
+   Prud'homme–Maday–Ballout 2024; a second pair of eyes on that would help.
 2. The transient thread. The direct $(\mu, t) \to c$ mapper plateaus at 1.7% and is
-   measurably data-limited (learning-curve slopes 0.8–1.1, report §8.4), so the next
+   measurably data-limited (learning-curve slopes 0.8–1.1, report §8.2), so the next
    formulation is probably latent dynamics: $\dot c = f(c, \mu, \text{load}(t))$, eight
    unknowns, trained through the ODE solver against the same trajectories. The load
    switches put this squarely in the stiff-neural-ODE regime where naive training is
@@ -245,10 +245,10 @@ For discussion:
   PDEs*, Mathematics of Computation, 2017.
 - Chkifa, Cohen & Schwab, *Breaking the curse of dimensionality in sparse polynomial
   approximation of parametric PDEs*, J. Math. Pures Appl., 2015.
-- Cohen, Dahmen, Dolbeault & Somacal, *Reduced order modeling for elliptic problems with
+- Cohen, Dolbeault, Somacal & Dahmen, *Reduced order modeling for elliptic problems with
   high contrast diffusion coefficients*, arXiv:2304.10971, 2023.
-- Ballout, Maday & Prud'homme, *Nonlinear compressive reduced basis approximation: when
-  Taylor meets Kolmogorov*, arXiv:2407.03769, 2024.
+- Prud'homme, Maday & Ballout, *Nonlinear compressive reduced basis approximation for
+  multi-parameter elliptic problem*, arXiv:2407.03769, 2024.
 - Chaturantabut & Sorensen, *Nonlinear model reduction via discrete empirical
   interpolation*, SIAM J. Sci. Comput., 2010.
 - Kim, Ji, Deng, Ma & Rackauckas, *Stiff neural ordinary differential equations*,

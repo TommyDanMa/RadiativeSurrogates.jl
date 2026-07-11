@@ -1,0 +1,10 @@
+# Configuration for the `typos` spell checker (https://github.com/crate-ci/typos)
+
+[files]
+extend-exclude = ["data/", "figures/", "docs/src/assets/", "Manifest.toml"]
+
+[default.extend-words]
+# Julia / FEM / project identifiers that are not typos
+Ba = "Ba"
+nd = "nd"
+Nd = "Nd"

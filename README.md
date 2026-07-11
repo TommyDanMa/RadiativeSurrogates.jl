@@ -1,8 +1,12 @@
 # RadiativeSurrogates: reduced-basis neural surrogates with a nonlinear radiation BC
 
+[![CI](https://github.com/TommyDanMa/RadiativeSurrogates.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/TommyDanMa/RadiativeSurrogates.jl/actions/workflows/ci.yml)
+[![ColPrac: Contributor's Guide](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
+[![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
+
 *(Non-specialists: start with [EXPLAINER.md](EXPLAINER.md), a plain-language tour.)*
 
-This project grew out of [TommyDanMa/afw](https://github.com/TommyDanMa/afw), where the
+This project grew out of [TommyDanMa/reduced-basis-neural-surrogates](https://github.com/TommyDanMa/reduced-basis-neural-surrogates), where the
 linear-elliptic reduced-basis study (a *Treball de Recerca*) lives; this repo is the
 standalone continuation. The problem: the heat equation on a 2D radiator section whose
 dominant heat rejection is **Stefan–Boltzmann radiation to deep space** (T_space = 3 K),
@@ -34,9 +38,9 @@ set our parameter regime; this prototype is a methods study, not their tool.*
   coefficient learning is the right factorization and why this manifold is rank 3
   ([notes/rank-note.md](notes/rank-note.md)); (ii) *many-query outer loops* (MDO,
   optimization under uncertainty), where the surrogate propagates 10⁵ scenarios in ~7 s,
-  FOM-verified at every reported quantile (report §8.11); (iii) *onboard/edge autonomy*,
+  FOM-verified at every reported quantile (report A.5); (iii) *onboard/edge autonomy*,
   where an 8.6k-parameter, Float32-lossless model with an explicit validity guard fits
-  hardware the FOM never will (report §8.9).
+  hardware the FOM never will (report A.3).
 - **Main caveat:** 2D, fixed load geometry, unity view factor, in-distribution queries:
   a controlled prototype, not a general theorem. The rank-3 collapse is a property of the
   fixed geometry, not of radiation physics.
@@ -54,7 +58,7 @@ julia --project=. scripts/14_run_console.jl
 `scripts/18_report_numbers.jl` reprints every headline table straight from `data/*.jld2`,
 so the report can always be diffed against the data. Programmatic queries outside the
 training box should check `in_training_box(ε, Q)`; measured out-of-distribution
-degradation is in the report's robustness section.
+degradation is in report appendix A.1.
 
 **The two-page technical note** distilling the project's core finding is
 [notes/rank-note.md](notes/rank-note.md): a predictive argument for why the steady
@@ -103,14 +107,14 @@ POD floor at r=2: 1.1e-9 (basis ≠ bottleneck). Speed-ups: batched throughput o
 solves (23.1 ms median), incl. reconstruction, excl. plotting/model loading, after warm-up
 (BenchmarkTools medians, batch = 102). Hardware for all timings: AMD Ryzen AI 9 HX 370
 (CPU only), 1 Julia thread, 12 BLAS threads, Julia 1.12.6. Coefficients are trained **whitened**; the rank cliff gives c a ~1e9
-dynamic range. Robustness (report §8.7; N = 20 fresh seeds varying network init only):
+dynamic range. Robustness (report A.1; N = 20 fresh seeds varying network init only):
 POD-MLP 1.35e-3 ± 0.18e-3 (the deployed 9.2e-4 sits at the favourable edge of the
 ensemble), POD-KAN 2.86e-3 ± 0.49e-3, transient 1.89e-2 ± 0.20e-2; the rank-3 cliff
 replicates at 120×60 and with P2
 elements; out-of-distribution the median error grows ~17× just outside the box, so queries
 should stay inside `in_training_box`.
 
-New in the V&V pass (report §8.8–8.11): forward UQ through the surrogate (N = 10⁵ in
+New in the V&V pass (report appendix A): forward UQ through the surrogate (N = 10⁵ in
 ~7 s) matches an exact 10⁴-solve FOM Monte Carlo within 0.71 K at every reported
 quantile; Float32 inference is lossless at reported precision (Float16 physics
 evaluation overflows: u⁴); GCI bands the deployed grid's own QoI discretization error at

@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: >-
+  RadiativeSurrogates.jl: reduced-basis neural surrogates for the heat
+  equation with a nonlinear radiation boundary condition
+type: software
+authors:
+  # TODO(Tom): before JOSS submission, replace with cited name and add ORCID
+  - name: "Tommy (TommyDanMa)"
+license: MIT
+repository-code: "https://github.com/TommyDanMa/RadiativeSurrogates.jl"
+keywords:
+  - reduced-order modeling
+  - proper orthogonal decomposition
+  - scientific machine learning
+  - finite element method
+  - thermal radiation
+  - Julia
+abstract: >-
+  Reduced-basis neural surrogates for the heat equation with a nonlinear
+  Stefan-Boltzmann radiation boundary condition (deep-space sink). Gridap
+  assembles the finite element residuals and Jacobians; the SciML stack
+  solves them (NonlinearSolve steady, OrdinaryDiffEq mass-matrix transient).
+  The package carries a diagnostic methodology for deciding when coefficient
+  learning is the right surrogate factorization: manifold spectrum
+  measurement, pre-registered structural rank experiments, exact Galerkin
+  error floors separating basis error from map error, and verification
+  artifacts (grid-convergence error bands, seed ensembles, an
+  out-of-distribution guard, a floating-point precision audit, and forward
+  uncertainty propagation against an exact full-order Monte Carlo reference).

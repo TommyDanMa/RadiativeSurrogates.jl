@@ -7,68 +7,98 @@ nonlinear radiation boundary condition**
 
 ## Abstract
 
-We extend the reduced-basis neural-surrogate recipe of the parent project (learn POD
-coefficients $\mu \mapsto c$, never the full field) to a genuinely nonlinear problem: the
-heat equation on a 2D radiator section whose dominant heat rejection is Stefan–Boltzmann
-radiation to deep space ($T_\text{space} = 3\,$K), with parametric emissivity and electronics
-load cycles. Two results stand out. **(i)** For a *fixed* load geometry the steady solution
-manifold is numerically **rank-3** ($\sigma_3/\sigma_1 \approx 7\cdot 10^{-9}$): the parameters
-move temperature levels and amplitudes of essentially fixed spatial shapes, so all of the
-problem's strong nonlinearity lives in the coefficient map $c(\mu)$. This is exactly the
-regime where a tiny coefficient mapper is the right surrogate, and where the reconstruction
-basis is demonstrably not the bottleneck. **(ii)** Transient load switching restores a genuinely
-higher-dimensional manifold: the space-time POD spectrum decays orders of magnitude more
-slowly, and the resulting $(\mu, t) \mapsto c$ surrogate reproduces full-order **design
-rankings** (worst-case chip temperature over a load cycle, across an emissivity × duty grid)
-with Spearman correlation 0.999 at hundreds of times the throughput. This is a controlled 2D
-prototype, not a general theorem.
+This report asks when learning reduced-basis coefficients ($\mu \mapsto c$, never the
+full field) is the right factorization for a neural surrogate, and answers it twice on
+one problem: the heat equation on a 2D radiator section rejecting heat by
+Stefan–Boltzmann radiation to deep space ($T_\text{space} = 3\,$K), with parametric
+emissivity and electronics load cycles. **Steady case: yes, and provably map-limited.**
+For fixed load geometry the solution manifold is numerically **rank 3**
+($\sigma_3/\sigma_1 \approx 7\cdot10^{-9}$, grid- and element-independent): the
+parameters move temperature levels and amplitudes of essentially fixed spatial shapes,
+so all of the problem's strong nonlinearity lives in the coefficient map $c(\mu)$. Two
+exact parameter collapses and a measured functional collinearity explain the collapse;
+of three predictions pre-registered to test the explanation, two hit (a second heater
+adds exactly one mode; conductivity as a third parameter adds none, against naive
+parameter counting) and one missed (box-shrink scaling), the miss leading to the
+collinearity mechanism that reconstructs the cliff to ~25% across seven configurations.
+An exact reduced-Galerkin floor certifies the architecture: at the deployed rank,
+100.00% of the surrogate's error is coefficient-map error, and an 8,642-parameter
+whitened MLP reaches $9.2\cdot10^{-4}$ relative $L^2$ with a PDE residual ~6,000×
+smaller than a direct field MLP's, at thousands of times the FOM's throughput.
+**Transient case: not yet, for a measured reason.** Load switching re-thickens the
+manifold ($\sigma_8/\sigma_1 \approx 3\cdot10^{-5}$); the $(\mu, t) \mapsto c$ mapper
+plateaus at 1.7%, and its learning curve (slopes 0.82/1.10) shows the plateau is
+data-limited, pointing to latent dynamics rather than more modes. The plateaued
+surrogate still reproduces full-order design rankings (Spearman 0.9987/0.9988 at two
+operating points, top-5 5/5, identical optimum). A controlled 2D prototype, not a
+general theorem; the verification machinery lives in Appendix A.
 
-## 1. Introduction
+## 1. The question
 
-The parent project established, for a linear parametric elliptic PDE, that learning $r$
-reduced-basis coefficients beats learning full fields. The obvious objection is that real
-thermal problems are not linear: space thermal management in particular is dominated by the
-$T^4$ Stefan–Boltzmann law. This sub-project makes the nonlinearity the central object. It is
-in the boundary condition, it is strong (temperatures span hundreds of kelvin across the
-parameter box), and it is exactly the kind of term that breaks *intrusive* reduced-order
-methods, which need hyper-reduction (DEIM/EIM) to evaluate $u^4$ online. The non-intrusive
-coefficient-mapper approach is agnostic to how nonlinear the full-order model is, a point
-this prototype demonstrates concretely.
+For fixed load geometry, the steady manifold of the heat equation with a
+Stefan–Boltzmann $u^4$ boundary is numerically rank 3: $\sigma_3/\sigma_1 =
+7.2\cdot10^{-9}$ over 410 solutions whose peak temperatures span 296–973 K, and the
+number survives grid and element refinement (§4). Nothing in the problem statement announces it.
 
-**Relevance to high-power space systems.** High-power electronics and compute systems in
-space must reject waste heat exclusively through thermal radiation, as convection is
-unavailable in vacuum. This creates strong nonlinearity in the boundary heat flux due to the
-Stefan–Boltzmann law. Efficient parametric modeling of such systems is required for design
-studies involving varying material properties, emissivity, power profiles, and orbital
-thermal environments. The present work develops a reduced-basis neural surrogate for the
-time-dependent heat equation with a nonlinear radiative boundary condition as a controlled
-prototype targeting this class of problems. The surrogate learns only the coefficients of a
-data-derived basis while preserving the dominant radiative physics through an explicit
-residual that includes the $T^4$ term.
+Everything else in this report hangs on that observation. Reduced-basis surrogates
+learn $r$ coefficients instead of $n$ field values; whether that factorization is
+sound rests on exactly the manifold dimension that is usually assumed rather than
+measured. Here it
+is measured, explained, and relied on: §5 explains the collapse (two exact parameter
+collapses, a measured functional collinearity); §6 tests the explanation with
+predictions pre-registered before the scripts ran, two hits and one recorded miss; §7
+draws the consequence, an exact Galerkin floor certifying that 100.00% of the deployed
+surrogate's error is coefficient-map error, none of it basis.
 
-The concrete motivation is AI1-class orbital compute (SpaceX reveal, June 2026; see
-`docs/src/assets/`): 150 kW-peak compute rejected through ~110 m² of deployable radiators, about
-1.4 kW/m², which our parameter regime brackets. The reveal's spec numbers are used as
-*motivation only*, not as model inputs. One origin note, for honesty: the first candidate
-testbed was Maxwell's equations; the radiative boundary condition was chosen instead as a
-far simpler carrier of strong nonlinearity, a single boundary term with everything else
-linear, which is exactly what keeps the diagnostic controlled.
+A diagnostic earns the name only if it can say no. The transient problem supplies the
+no: load switching re-thickens the manifold ($\sigma_8/\sigma_1 \approx 3\cdot10^{-5}$),
+the $(\mu, t) \mapsto c$ mapper plateaus at 1.7%, and its learning curve pins the
+plateau on data, not on the basis (§8). Opposite verdicts on the same physics, solver,
+and pipeline, each confirmed downstream. The test:
 
-**Who actually needs the surrogate.** Not the operator's design office, for this problem:
-an organization with abundant compute runs the full-order model and has its answer over a
-coffee, and this prototype's own FOM solves in 23 ms (§8.2). A surrogate of this class
-earns its keep in three places. *Many-query outer loops*: multidisciplinary optimization
-and uncertainty propagation ask for $10^4$–$10^6$ evaluations inside an optimizer, where
-even a fast FOM is the bottleneck; §8.11 propagates 100,000 scenarios in 7.5 s where the
-exact reference needs 444 s for a tenth as many. *Onboard and edge deployment*: where
-compute genuinely is scarce, an 8,642-parameter model with Float32-lossless inference
-(§8.9) and an explicit `in_training_box` validity guard has the ingredients of a
-flight-software component, a role the FOM cannot fill at all. And, first among the three,
-the *diagnostic itself*: this study's primary product is not the surrogate but the answer
-to when coefficient learning is the right factorization, and why this manifold is rank 3
+```mermaid
+flowchart TD
+    A["New parametric PDE problem:<br/>surrogate architecture to choose"] --> B["<b>1 · Verify the solver</b><br/>MMS order, energy balance, Jacobians"]
+    B -- "fails" --> B2["fix the solver first"] --> B
+    B -- "verified" --> C["<b>2 · Measure the spectrum</b><br/>snapshots → POD σ-decay"]
+    C --> C2["<b>2b · Verify the measurement</b><br/>grid & element independence,<br/>reconstruction floor at r"]
+    C2 -- "spectrum moves with the mesh:<br/>you measured the discretization" --> C
+    C2 -- "invariant" --> D["<b>3 · Test structural hypotheses</b><br/>exact parameter collapses,<br/>coefficient-function collinearity"]
+    D --> E["<b>4 · Pre-register predictions, run them</b><br/>misses are results"]
+    E -- "miss → structure not understood" --> D
+    E -- "hits" --> F{"intrinsically<br/>low-dimensional?<br/>(hard σ-cliff)"}
+    F -- "yes" --> G["<b>Coefficient learning:</b> μ ↦ c"]
+    G --> G2["<b>5 · Certify and ship with a contract</b><br/>Galerkin floor (error lives in the map) ·<br/>N-seed spread · OOD guard ·<br/>reference error band (GCI)"]
+    F -- "no: slow decay<br/>(transport, switching, moving loads)" --> H["<b>Don't.</b><br/>more data · latent dynamics ·<br/>nonlinear ROM · operator learning"]
+```
+
+*The diagnostic this report walks, twice. Every box is a numbered artifact in this
+repository: box 1 is the test suite (§3); 2 and 2b are the snapshot POD and its grid- and
+element-independence check (§4); 3 is the parameter collapses and the collinearity
+measurement (§§5–6); 4 is the pre-registered score card (§6); 5 is the Galerkin floor and
+the deployment contract (§7, §9.3). The steady problem exits through the yes-branch, the
+transient problem through the no-branch (§8); §9 collects the engineering consequences,
+and the verification machinery sits in Appendix A.*
+
+**Physical motivation.** In vacuum heat leaves only by radiation. The concrete prompt
+is AI1-class orbital compute (SpaceX reveal, June 2026; see `docs/src/assets/`):
+150 kW-peak compute through ~110 m² of deployable radiators, about 1.4 kW/m², which
+our parameter regime brackets; the spec numbers are motivation, not model inputs. One
+origin note, for honesty: the first candidate testbed was Maxwell's equations; the
+radiation BC was chosen instead as a far simpler carrier of strong nonlinearity, one
+boundary term with everything else linear, which is what keeps the diagnostic
+controlled.
+
+**Who actually needs the surrogate.** Not a design office with abundant compute: it
+runs the 23 ms FOM (§9.1) and has its answer over a coffee. The class pays in
+*many-query outer loops*, where optimization and uncertainty propagation ask for
+$10^4$–$10^6$ evaluations (100,000 scenarios in 7.5 s against 444 s for a tenth as
+many by FOM; §9.3, A.5); in *onboard and edge deployment*, where an 8,642-parameter,
+Float32-lossless model with an explicit `in_training_box` guard fits hardware the FOM
+never will (A.3); and, first among the three, in the *diagnostic itself*
 (`notes/rank-note.md`).
 
-## 2. Mathematical background
+## 2. The problem
 
 Strong form on $\Omega = (0,1) \times (0,0.5)$ m:
 
@@ -95,7 +125,7 @@ One honest difference: the parent's "reconstructions satisfy the BCs exactly by 
 selling point does **not** carry over, since the radiation BC is part of the residual. QoI
 fidelity (radiated power, peak temperature) takes over that role.
 
-## 3. Numerical solver: Gridap assembles, SciML solves
+## 3. A verified solver
 
 The FE machinery is [Gridap.jl](https://github.com/gridap/Gridap.jl): a
 `CartesianDiscreteModel` (default 60×30, P1 Lagrangian; element order is a config knob), the
@@ -120,9 +150,7 @@ autodiff for the Jacobian. Everything downstream of assembly is the SciML stack:
 
 This division of labour is the point of the architecture. "Residuals and Jacobians under
 control" means we hand the *assembled* $R$ and $J$ to the solver ourselves, and can therefore
-test them (below) independently of any solver behaviour.
-
-## 4. Solver verification
+test them independently of any solver behaviour.
 
 Eight named test files (51 assertions) pin the physics before any ML enters, plus a
 skip-guarded regression file (17 more whenever the data artifacts are present, 68 in
@@ -141,6 +169,14 @@ total) that pins the *deployed* surrogates' quality with 3× margin:
 ![MMS convergence](../figures/01_mms_convergence.png)
 ![Analytic radiative equilibrium](../figures/02_analytic_equilibrium.png)
 
+The time integrators get the same treatment. Fixed-Δt convergence against a tight FBDF
+reference (smooth sinusoidal load): ImplicitEuler rates 0.954/0.967/0.980, Trapezoid
+2.077/2.017/2.004; the θ-family behaves exactly as advertised through the nonlinear
+boundary term, and long-horizon constant-load runs reproduce the steady solution to the
+integrator tolerance.
+
+![θ-family dt-convergence](../figures/09_transient_convergence.png)
+
 Two details are worth recording. The 1D uniform-load test is *nodally exact* (P1 nodal
 superconvergence via the piecewise-linear Green's function), a far stronger check than the
 intended $O(h^2)$ tolerance. And all energy bookkeeping must use the *discretely injected*
@@ -148,14 +184,15 @@ power $Q \cdot \int \hat q\, d\Omega_h$: on grids where the chip patch does not 
 cell faces the quadrature captures only part of the nominal $Q$, and the discrete system
 conserves the quadratured value, not the nominal one.
 
-## 5. Steady dataset and the rank-3 surprise
+## 4. The observation: a rank-3 manifold
 
 ![Steady temperature fields, configs A and B](../figures/03_steady_fields.png)
 
 512 Sobol samples over $\mu = (\varepsilon, Q) \in [0.1, 0.95] \times [100, 800]$ W/m, one
 converged Newton solve each (median 49 ms as logged by the machine that generated the
-frozen dataset, 23.1 ms re-measured on the current hardware, §8.2; worst energy balance
-6e-12, peak temperatures 296–973 K). The POD of the 410 training snapshots delivers the project's first headline:
+frozen dataset, 23.1 ms re-measured on the current hardware, §9.1; worst energy balance
+6e-12, peak temperatures 296–973 K). The POD of the 410 training snapshots delivers the
+observation the rest of the report answers to:
 
 | $r$ | $\sigma_r/\sigma_1$ | reconstruction error (test) |
 | ---: | ---: | ---: |
@@ -167,87 +204,128 @@ frozen dataset, 23.1 ms re-measured on the current hardware, §8.2; worst energy
 ![POD σ-decay and reconstruction floor](../figures/06_pod_decay.png)
 
 **The steady manifold is numerically rank three** (and rank *two* for every practical
-purpose). The collapse is not a discretization artifact: replicating the POD on a 2× finer
-grid gives $\sigma_3/\sigma_1 = 6.7\cdot10^{-9}$ (120×60, P1) and with quadratic elements
+purpose): two modes reconstruct held-out fields to 1.1e-9, and the third singular value
+already sits eight orders below the first.
+
+The measurement itself is verified before it is interpreted (the flowchart's box 2b).
+The collapse is not a discretization artifact: replicating the POD on a 2× finer grid
+gives $\sigma_3/\sigma_1 = 6.7\cdot10^{-9}$ (120×60, P1) and with quadratic elements
 $6.8\cdot10^{-9}$ (60×30, P2), against $7.2\cdot10^{-9}$ at the baseline
-(`scripts/16_grid_independence.jl`).
+(`scripts/16_grid_independence.jl`). The spectrum is a property of the solution
+manifold, not of the mesh.
 
 ![Grid independence of the σ-decay](../figures/17_grid_independence.png)
 
-**A predictive rank estimate (pre-registered).** The collapse follows from two structural
-facts: the interior equation is linear, so each load shape contributes one exact manifold
-direction and $(Q, k)$ enter the particular solution only through $Q/k$; and the harmonic
-remainder, driven by near-uniform radiating-edge flux, spans very few shapes. Three tests
-were pre-registered in `notes/rank-note.md` before running
-`scripts/19_rank_prediction.jl`: a second heater patch adds exactly one real mode (the
-cliff moves to $\sigma_4/\sigma_1 = 8.3\cdot10^{-6}$); conductivity as a third parameter
-adds **none** ($\sigma_4/\sigma_1 = 3\cdot10^{-14}$, where naive parameter counting
-predicts a fourth $O(\sigma_2)$ mode); and the box-shrink scaling came out sub-quadratic
-(fitted log–log slopes $0.22 \pm 0.00$ on the ε-axis and $0.66 \pm 0.01$ on the Q-axis,
-mean ± std over N = 3 independent dataset draws, instead of the predicted [1, 2]), a miss
-recorded as such in the note and too tightly replicated to be a sampling artifact.
+Nothing in the problem statement announces this. The box spans temperatures from 296 to
+973 K, the boundary term is quartic, and a two-parameter problem could plausibly fill
+many directions. It does not. That demands an explanation, and the explanation had
+better predict something.
+
+## 5. Candidate explanation
+
+Three structural facts, in increasing order of what they explain.
+
+**Exact parameter collapses.** The interior equation is linear: each fixed load shape
+contributes one exact manifold direction, scaled by its amplitude, and $(Q, k)$ enter
+the particular solution only through $Q/k$. Together with the boundary condition, the
+solution depends on $(\varepsilon, Q, k)$ only through $(Q/k, \varepsilon/k)$: the
+*effective* parameter count is two, whatever the nominal count is. The harmonic
+remainder, driven by near-uniform radiating-edge flux, spans very few shapes.
+
+**Analyticity.** The parameter-to-solution map is analytic on the box (the radiation
+term is analytic and monotone in $u$), and analytic parametric maps have exponentially
+decaying Kolmogorov widths; the smoothness-to-decay half of the argument is standard
+(Cohen–DeVore–Schwab and successors; references at the end). This explains *fast* decay.
+It does not explain where the cliff sits.
+
+**Mechanism.** With the load geometry fixed, varying $Q$ scales the (linear)
+source-response shape exactly, and varying $\varepsilon$ mostly moves the radiative
+equilibrium *level*, a strongly nonlinear scalar multiplying the constant mode. Strong
+parameter nonlinearity is invisible to POD rank: it lives entirely in the coefficient
+map $c(\mu)$, which is precisely what a learned mapper is for. (What re-thickens the
+manifold is not the parameters but the transients, §8.)
+
+If this explanation is right, it predicts. Three tests were pre-registered in
+`notes/rank-note.md` before `scripts/19_rank_prediction.jl` first ran:
+
+- **P1**: a second heater patch is one new load shape, so it adds *exactly one* mode.
+- **P2**: conductivity as a third parameter adds *none*, because of the $Q/k$ collapse;
+  naive $d+1$ parameter counting predicts a fourth $O(\sigma_2)$ mode.
+- **P3**: shrinking the parameter box shrinks $\sigma_3$ with a log–log slope in
+  $[1, 2]$ (analyticity-driven decay).
+
+## 6. The predictions: two hits, one miss, and what the miss exposed
+
+Scored against `scripts/19_rank_prediction.jl` (misses are results, not failures):
+
+- **P1, hit.** The cliff moves down by exactly one mode:
+  $\sigma_4/\sigma_1 = 8.3\cdot10^{-6}$.
+- **P2, strong hit.** $\sigma_4/\sigma_1 = 3\cdot10^{-14}$: no fourth mode where naive
+  parameter counting predicts one. The $Q/k$ collapse, not the parameter count, sets
+  the rank.
+- **P3, miss.** The box-shrink scaling came out sub-quadratic: fitted log–log slopes
+  $0.22 \pm 0.00$ on the ε-axis and $0.66 \pm 0.01$ on the Q-axis (mean ± std over
+  N = 3 independent dataset draws), against the predicted $[1, 2]$. A miss, recorded;
+  too tightly replicated to be a sampling artifact.
 
 ![Rank predictions](../figures/20_rank_prediction.png)
 
-An exploratory eigenmode diagnostic (`scripts/22_eigenmode_diagnostic.jl`, suggested by
-external review, not pre-registered) rejects a spectral-gap explanation of the cutoff and
-localizes it in **functional collinearity**: 12 parity-allowed eigenmodes of the
-linearized operator are excited (amplitudes $\sim \lambda^{-1.9}$), but their coefficient
-functions over the parameter box have normalized singular values 2.5, 2.3, 3.9e-5: many
-spatial modes, two independent parameter functions. Details in `notes/rank-note.md` §4b.
+The miss says the *scale* of the cutoff was not understood, and it looped the diagnosis
+back once (the flowchart's miss edge). An eigenmode diagnostic
+(`scripts/22_eigenmode_diagnostic.jl`, suggested by external review, exploratory, not
+pre-registered) rejects a spectral-gap explanation and localizes the cutoff in
+**functional collinearity**: 12 parity-allowed eigenmodes of the linearized operator are
+excited (amplitudes $\sim \lambda^{-1.9}$), but their coefficient functions over the
+parameter box have normalized singular values 2.5, 2.3, 3.9e-5. Many spatial modes, two
+independent parameter functions. Details in `notes/rank-note.md` §4b.
 
 ![Eigenmode diagnostic](../figures/21_eigenmode_diagnostic.png)
 
-The quantitative version generalizes (`scripts/23_cliff_reconstruction.jl`): the singular
-value of the amplitude-weighted excited coefficient functions reproduces the measured POD
-cliff to a uniform ~25% across seven configurations (base, both 3-parameter variants with
-$r^*$ detected automatically, and the four shrink boxes), so the cutoff scale is set by
-functional collinearity weighted by the amplitude the independent direction carries.
+The quantitative version generalizes (`scripts/23_cliff_reconstruction.jl`): the
+singular value of the amplitude-weighted excited coefficient functions reproduces the
+measured POD cliff to a uniform ~25% across seven configurations (base, both
+3-parameter variants with $r^*$ detected automatically, and the four shrink boxes),
+while the naive leakage × total-amplitude product overpredicts by up to three orders
+of magnitude (deflation matters). The cutoff scale is set by functional collinearity weighted by the amplitude
+the independent direction carries; the σ-cliff measures how many independent parameter
+functions drive the excited modes. Here: two.
 
 ![Cliff reconstruction across configurations](../figures/22_cliff_reconstruction.png)
 
-Mechanism: with the load geometry fixed, varying $Q$ scales the (linear)
-source-response shape exactly, and varying $\varepsilon$ mostly moves the radiative
-equilibrium *level*, a strongly nonlinear scalar multiplying the constant mode. Strong
-parameter nonlinearity is invisible to POD rank: it lives entirely in the coefficient map
-$c(\mu)$, which is precisely what the neural mapper is for. This also previews §8.4: what
-re-thickens the manifold is not the parameters but the *transients*.
+## 7. The consequence: coefficient learning, certified
 
-Practical consequence for training: the coefficient dynamic range is $c_1 : c_3 \approx
-10^9$, so a raw MSE loss cannot learn the small modes (their gradients are ~$10^{-18}$).
-All mappers are therefore trained on **whitened coefficients** $\tilde c_i = c_i /
-\mathrm{std}(c_i)$, with the scales stored in the model file and re-applied at prediction
-time.
+### 7.1 Models and metrics
 
-## 6. Surrogate models
+The diagnosis licenses the factorization $\hat G = R \circ N$: a fixed linear
+reconstruction $R(c) = \bar u + \Phi_r c$ and a small learned map
+$N: \tilde\mu \mapsto c$ (inputs standardized to $[-1,1]^d$). Three mappers are
+compared: a POD-MLP (tanh, 64×3), a POD-KAN (`KolmogorovArnold.KDense`, kept as a
+*compact coefficient-mapper baseline*, not a structural ingredient), and a direct MLP
+$\mu \mapsto u$ baseline trained on scaled fields.
 
-The learned operator is the same factorization as the parent project,
-$\hat G = R \circ N$: a fixed linear reconstruction $R(c) = \bar u + \Phi_r c$ and a small
-learned map $N: \tilde\mu \mapsto c$ (inputs standardized to $[-1,1]^d$). Three mappers are
-compared: a POD-MLP (tanh, 64×3), a POD-KAN (`KolmogorovArnold.KDense`, kept as a *compact
-coefficient-mapper baseline*, not a structural ingredient), and a direct MLP $\mu \mapsto u$
-baseline trained on scaled fields.
+One training consequence follows directly from the rank cliff: the coefficient dynamic
+range is $c_1 : c_3 \approx 10^9$, so a raw MSE loss cannot learn the small modes (their
+gradients are ~$10^{-18}$). All mappers are therefore trained on **whitened
+coefficients** $\tilde c_i = c_i / \mathrm{std}(c_i)$, with the scales stored in the
+model file and re-applied at prediction time. The choice is load-bearing and the basis
+sets the ceiling, both measured: turning whitening off (same seed) degrades the mapper
+200× to 2.1e-1, and swapping in a random orthonormal basis caps accuracy at exactly its
+own projection floor, 2.13e-1 (ablations in A.1).
 
-The contrast that motivates non-intrusive reduction here: an intrusive POD-Galerkin ROM of
-this problem would need a Newton solve *in the reduced space* at every query, with the $u^4$
-boundary term evaluated by hyper-reduction (DEIM/EIM) to stay independent of $n$. The
-coefficient mapper sidesteps both, because the FOM's nonlinearity is baked into the training
-data. The price is being purely data-fit inside the sampled box, with the assembled nonlinear
-residual retained as an *a posteriori* physics check.
+The contrast that motivates non-intrusive reduction here: an intrusive POD-Galerkin ROM
+of this problem would need a Newton solve *in the reduced space* at every query, with
+the $u^4$ boundary term evaluated by hyper-reduction (DEIM/EIM) to stay independent of
+$n$. The coefficient mapper sidesteps both, because the FOM's nonlinearity is baked into
+the training data. The price is being purely data-fit inside the sampled box, with the
+assembled nonlinear residual retained as an *a posteriori* physics check.
 
-## 7. Evaluation metrics
+Metrics, per test sample: relative L² field error; coefficient error; the **nonlinear
+PDE residual** $\|R(\hat u)\|_2 / \|F_\text{load}\|_2$ evaluated with the same Gridap
+assembly as the solver (the honest generalization of the parent's
+$\|A\hat u - b\|/\|b\|$); and two design QoIs, relative radiated-power error and
+absolute peak-temperature error (K).
 
-Per test sample: relative L² field error; coefficient error; the **nonlinear PDE residual**
-$\|R(\hat u)\|_2 / \|F_\text{load}\|_2$ evaluated with the same Gridap assembly as the solver
-(the honest generalization of the parent's $\|A\hat u - b\|/\|b\|$); and two design QoIs,
-relative radiated-power error and absolute peak-temperature error (K). *Timing caveat:*
-surrogate speed-ups are reported as both single-query latency and batched throughput,
-including reconstruction, excluding plotting and model loading, after warm-up; the FOM
-reference is the full Newton solve described in §3.
-
-## 8. Results
-
-### 8.1 Steady accuracy and the rank sweep
+### 7.2 Held-out accuracy
 
 Held-out evaluation (102 samples), deployed rank **r = 2** (pinned by the sweep below;
 seeds are rank-keyed so the deployed models *are* the sweep models):
@@ -263,23 +341,6 @@ five to six orders below the network error; *the basis is not the bottleneck*, i
 more extreme form than the parent project. The direct MLP's residual (38.7: its fields
 violate the discretized PDE badly despite a decent L² error) is the physics-consistency gap
 in one number.
-
-**Error decomposition via the exact Galerkin floor** (`scripts/21_galerkin_floor.jl`).
-Solving the exact reduced-Galerkin system (Newton on $\Phi_r^\top R(\bar u + \Phi_r c) =
-0$; at $n = 1891$ no hyper-reduction is needed offline, DEIM being the online path) bounds
-any surrogate confined to the POD subspace. Mean over the 102 test parameters:
-
-| rank | L² projection floor | Galerkin floor | POD-MLP error | map share |
-| ---: | ---: | ---: | ---: | ---: |
-| 1 | 1.7e-2 | 2.4e-2 | 1.7e-2 | basis-limited |
-| **2** | 1.14e-9 | **1.14e-9** | 9.2e-4 | **100.00%** |
-| 3 | 6.2e-16 | 2.8e-13 | 1.3e-3 | 100.00% |
-| 5 | 1.8e-16 | 2.8e-13 | 1.7e-3 | 100.00% |
-
-At and above the manifold rank the Galerkin floor equals the projection floor, so the
-deployed surrogate's error is 100.00% coefficient-map error; below it (r = 1) the mapper
-already sits at the basis floor. The crossover tells you, per rank, whether to spend
-effort on the basis or on the map.
 
 Rank sweep (rel L² / residual):
 
@@ -298,55 +359,89 @@ The parent's non-monotonicity lesson recurs *in extremis*: mode 3 is numerically
 the network fit noise and measurably degrade both metrics. Model selection by held-out
 error, not by σ-decay alone, picks r = 2.
 
-### 8.2 Timing: latency vs throughput
+Seed robustness, inline (full machinery in A.1): twenty fresh seeds varying the network
+initialization only give 1.35e-3 ± 0.18e-3, range [9.69e-4, 1.67e-3] (N = 20); the
+deployed 9.18e-4 sits at the favourable edge of that ensemble, and every conclusion
+(MLP < KAN, both ≪ direct; the r = 2 optimum) survives every seed. Paired bootstrap
+differences on the same 102 test parameters exclude zero: KAN − MLP = +2.0e-3
+[1.6, 2.4]e-3, direct − MLP = +4.9e-3 [4.4, 5.4]e-3 rel L² (B = 10,000). The ordering is
+not seed luck.
 
-BenchmarkTools medians, batch size = 102. Speed-ups are batched throughput over FOM Newton
-solves, including POD reconstruction (and unscaling for the direct model), excluding plotting
-and model loading, after warm-up. *Hardware, for every timing in this report:* AMD Ryzen
-AI 9 HX 370 (CPU only; the iGPU is unused), 1 Julia thread, 12 BLAS threads, Julia 1.12.6,
-re-measured 2026-07-09. The frozen data artifacts were generated on earlier hardware,
-whose dataset log shows a median 49 ms Newton solve (§5); all timings quoted here are
-from the current machine.
+### 7.3 The certificate: an exact Galerkin floor
 
-| method | single (ms) | batched (ms/q) | single× | batched× | allocs (1-q) |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| FOM solve | 23.1 | — | 1× | — | 188,945 |
-| direct MLP | 0.013 | 0.0032 | 1,796× | 7,259× | 22 |
-| POD-MLP | 0.004 | 0.0026 | 5,270× | 8,852× | 31 |
-| POD-KAN | 0.006 | 0.0025 | 4,159× | 9,104× | 90 |
+**Error decomposition via the exact Galerkin floor** (`scripts/21_galerkin_floor.jl`).
+Solving the exact reduced-Galerkin system (Newton on $\Phi_r^\top R(\bar u + \Phi_r c) =
+0$; at $n = 1891$ no hyper-reduction is needed offline, DEIM being the online path) bounds
+any surrogate confined to the POD subspace. Mean over the 102 test parameters:
 
-The 10³–10⁴× factors are larger than the parent's because the FOM is now a nonlinear solve;
-that is the honest framing: surrogate value grows with FOM cost. The headline of the method
-remains the structure (rank-2 basis, physics metrics), not the raw speed-up.
+| rank | L² projection floor | Galerkin floor | POD-MLP error | map share |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 1.7e-2 | 2.4e-2 | 1.7e-2 | basis-limited |
+| **2** | 1.14e-9 | **1.14e-9** | 9.2e-4 | **100.00%** |
+| 3 | 6.2e-16 | 2.8e-13 | 1.3e-3 | 100.00% |
+| 5 | 1.8e-16 | 2.8e-13 | 1.7e-3 | 100.00% |
 
-### 8.3 Transient verification
+At and above the manifold rank the Galerkin floor equals the projection floor, so the
+deployed surrogate's error is 100.00% coefficient-map error; below it (r = 1) the mapper
+already sits at the basis floor. The crossover tells you, per rank, whether to spend
+effort on the basis or on the map. This is the certificate the architecture claim rests
+on: for this problem, at the deployed rank, there is nothing left to gain from the basis.
 
-Fixed-Δt convergence against a tight FBDF reference (smooth sinusoidal load): ImplicitEuler
-rates 0.954/0.967/0.980, Trapezoid 2.077/2.017/2.004. The θ-family behaves exactly as
-advertised through the nonlinear boundary term. Long-horizon constant-load runs reproduce the
-steady solution to the integrator tolerance, and the square-wave cycle run shows the radiated
-power lagging the load with the expected
-$\tau_\text{rad} \approx \rho c (V/A) / 4\varepsilon\sigma T^3 \sim 10^4$ s relaxation, a
-sensible regime against the 1.8–10.8 ks load periods.
+### 7.4 The registered comparison: DeepONet (not run)
 
-![θ-family dt-convergence](../figures/09_transient_convergence.png)
+The evidence above is floors and residuals. The natural external comparison, operator
+learning, exists so far only as a pre-registered protocol: a DeepONet
+(NeuralOperators.jl; branch on $\tilde\mu$, trunk on $x$) on the same 410 snapshots at
+equal and at 3× parameter budgets, matched training budget (gradient steps × batch
+size), overlaid loss curves, PDE residual as the primary metric, plus a third arm with
+the trunk *frozen to the POD basis* to isolate learned-basis vs fixed-basis effects.
+Registered prediction: competitive on rel L², worse on PDE residual and sample
+efficiency at this snapshot count. No numbers exist yet; none are claimed. (The parent
+project's exact-BC wedge does not apply here: config B has no Dirichlet BC.)
+
+## 8. The transient branch: same diagnosis, opposite verdict
+
+### 8.1 Switching transients re-thicken the manifold
+
+The transient problem drives the radiator with square-wave load cycles. The physics sets
+the scales: the radiated power lags the load with the expected
+$\tau_\text{rad} \approx \rho c (V/A) / 4\varepsilon\sigma T^3 \sim 10^4$ s relaxation,
+a sensible regime against the 1.8–10.8 ks load periods.
+
 ![Square-wave load cycle response](../figures/10_load_cycle_response.png)
 
 *The radiator's thermal inertia filters the 0↔600 W square wave down to a ~20 W ripple in
 radiated power: the radiating edge effectively sees the orbit-average load while the chip
 sawtooths over ~60 K.*
 
-### 8.4 Space-time surrogate
-
 96 Sobol trajectories over $\mu = (\varepsilon, Q_p, \text{duty}, \text{period})$, three
 load periods each, 61 phase-uniform states, started from the steady state at the cycle-mean
 load (median transient FOM solve 13 s on the dataset-generating machine, about 270× its
-steady solve; this cost asymmetry is what makes a transient surrogate worth having). The space-time POD delivers the promised contrast to §5:
-instead of a rank-3 cliff, a smooth spectrum with
-$\sigma_4/\sigma_1 = 6.4\cdot10^{-3}$, $\sigma_8/\sigma_1 = 3.0\cdot10^{-5}$,
+steady solve; this cost asymmetry is what makes a transient surrogate worth having). The
+space-time POD delivers the promised contrast to §4: instead of a rank-3 cliff, a smooth
+spectrum with $\sigma_4/\sigma_1 = 6.4\cdot10^{-3}$, $\sigma_8/\sigma_1 = 3.0\cdot10^{-5}$,
 $\sigma_{16}/\sigma_1 = 6.9\cdot10^{-8}$. **Switching transients re-thicken the manifold.**
 
 ![Steady vs space-time σ-decay](../figures/11_spacetime_decay.png)
+
+**How many modes when radiation dominates?** The scope document asked how the mode count
+responds to the radiation regime. Conditioning the snapshot sets on emissivity bins (Nr
+from the mean radiating-edge temperature per bin):
+
+| ε bin | Nr (transient) | steady modes @1e-6 | space-time @1e-4 | @1e-6 |
+| --- | ---: | ---: | ---: | ---: |
+| [0.10, 0.38] | 0.21 | 2 | 6 | 12 |
+| [0.38, 0.67] | 0.23 | 2 | 6 | 12 |
+| [0.67, 0.95] | 0.27 | 2 | 7 | 12 |
+
+![σ-decay by emissivity bin and modes vs Nr](../figures/13_nr_study.png)
+
+Over this parameter box the mode count grows only weakly with Nr; the dominant axis is
+**steady vs transient** (2 modes vs ~6–12), not the radiation regime. The steady rank
+collapse is regime-independent, confirming it is a geometry property (fixed load shape),
+not a radiation property.
+
+### 8.2 The mapper plateaus, and the plateau is data-limited
 
 The $(\tilde\mu, t)$ mapper (inputs: 4 parameters, normalized time, two phase harmonics;
 128×3 MLP) uses *capped* whitening: full whitening would upweight $\sigma_8$-level modes by
@@ -371,8 +466,7 @@ statistical $M^{-1/2}$. The plateau is therefore **data-limited, not basis-limit
 trajectories would buy accuracy directly. The per-mode view shows the same signal-to-noise
 collapse as the parent project: modes 1–4 are learned to 7–22% relative error, mode 6 to
 87%, and modes 7–8 are pure noise (relative error > 1), which is exactly why the rank sweep
-is flat. The two structural levers are a larger trajectory budget and latent *dynamics*
-(neural ODE / operator inference on $c(t)$, §11); more modes is measurably not one of them.
+is flat.
 
 ![Learning curve and per-mode diagnostics](../figures/18_mode_diagnostics.png)
 
@@ -382,32 +476,54 @@ max 39%. The worst case is
 instructive: it is the *low-load* corner ($Q_p = 136$ W/m), where the true
 $P_\text{rad} \approx 94$ W is nearly constant because the radiator's thermal inertia filters
 the square wave almost completely, so a small absolute error is large relative to the local
-signal. On design-relevant loads the same surrogate ranks designs almost perfectly (§8.6).
+signal. On design-relevant loads the same surrogate ranks designs almost perfectly (§9.2).
 
 ![Transient surrogate evaluation](../figures/12_transient_eval.png)
 
 *Error vs time, peak-temperature trace, and radiated power vs time for a load cycle
 (surrogate vs FOM), shown for the worst held-out trajectory.*
 
-### 8.5 How many modes when radiation dominates?
+### 8.3 Verdict and exits
 
-The scope document asked how the mode count responds to the radiation regime. Conditioning
-the snapshot sets on emissivity bins (Nr from the mean radiating-edge temperature per bin):
+This is the flowchart's no-branch, reached with measurements in hand. The manifold is not
+intrinsically low-dimensional at the accuracy the steady problem enjoys; the basis is four
+to eight orders better than the map at every rank; and the binding constraint is data
+(learning-curve slopes near $M^{-1}$). At this data budget, $(\mu, t) \mapsto c$
+regression is not the right factorization: it works to 1.7%, and its own diagnostics say
+which exits exist. In the order the measurements license them: a larger trajectory budget
+(the near-$M^{-1}$ slope pays directly), and latent *dynamics*, learning
+$\dot c = f(c, \mu, \text{load}(t))$ through the solver instead of regressing $c(t)$
+against time (§11; the load switches make the training problem stiff). More modes is
+measurably not an exit.
 
-| ε bin | Nr (transient) | steady modes @1e-6 | space-time @1e-4 | @1e-6 |
-| --- | ---: | ---: | ---: | ---: |
-| [0.10, 0.38] | 0.21 | 2 | 6 | 12 |
-| [0.38, 0.67] | 0.23 | 2 | 6 | 12 |
-| [0.67, 0.95] | 0.27 | 2 | 7 | 12 |
+What survives the plateau is ranking. The 1.7% surrogate still orders designs almost
+perfectly, which is the engineering result the next section quantifies.
 
-![σ-decay by emissivity bin and modes vs Nr](../figures/13_nr_study.png)
+## 9. Engineering consequences
 
-The honest answer: over this parameter box the mode count grows only weakly with Nr; the
-dominant axis is **steady vs transient** (2 modes vs ~6–12), not the radiation regime. The
-steady rank collapse is regime-independent, confirming it is a geometry property (fixed load
-shape), not a radiation property.
+### 9.1 Timing: latency vs throughput
 
-### 8.6 Design study: ranking fidelity at throughput
+BenchmarkTools medians, batch size = 102. Speed-ups are batched throughput over FOM Newton
+solves, including POD reconstruction (and unscaling for the direct model), excluding plotting
+and model loading, after warm-up; the FOM reference is the full Newton solve described in §3.
+*Hardware, for every timing in this report:* AMD Ryzen
+AI 9 HX 370 (CPU only; the iGPU is unused), 1 Julia thread, 12 BLAS threads, Julia 1.12.6,
+re-measured 2026-07-09. The frozen data artifacts were generated on earlier hardware,
+whose dataset log shows a median 49 ms Newton solve (§4); all timings quoted here are
+from the current machine.
+
+| method | single (ms) | batched (ms/q) | single× | batched× | allocs (1-q) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FOM solve | 23.1 | — | 1× | — | 188,945 |
+| direct MLP | 0.013 | 0.0032 | 1,796× | 7,259× | 22 |
+| POD-MLP | 0.004 | 0.0026 | 5,270× | 8,852× | 31 |
+| POD-KAN | 0.006 | 0.0025 | 4,159× | 9,104× | 90 |
+
+The 10³–10⁴× factors are larger than the parent's because the FOM is now a nonlinear solve;
+that is the honest framing: surrogate value grows with FOM cost. The headline of the method
+remains the structure (rank-2 basis, physics metrics), not the raw speed-up.
+
+### 9.2 Design ranking at throughput
 
 The capstone reproduces the project's stated success criterion, a tool for testing subtle
 design changes. Candidate designs: a 10×10 grid over emissivity coating ε ∈ [0.15, 0.9] and
@@ -428,9 +544,9 @@ cycle. Two operating points guard against the result being a one-off.
 The throughput asymmetry is compilation, reported rather than hidden: the first sweep pays
 Julia's JIT once; warm sweeps cost ~0.05 s for 100 candidates. The conservative end-to-end
 number is 221×; the warm number is the deployment-relevant one. The FOM reference these
-errors are measured against is itself solid: the steady GCI study (§8.8) bands the
+errors are measured against is itself solid: the steady GCI study (A.2) bands the
 deployed grid's discretization error on peak temperature at 0.005–0.010 K, and the
-transient reference is integrator-tolerance-controlled (§8.3), both far below the
+transient reference is integrator-tolerance-controlled (§3), both far below the
 2.2–2.4 K median surrogate QoI error quoted here.
 
 ![Design study: worst-case chip temperature maps](../figures/14_design_study.png)
@@ -445,7 +561,127 @@ The claim defended is deliberately *ranking fidelity*, not pointwise truth: a sc
 must order candidates correctly and hand the shortlist to the full-order model, which this
 one does, in-distribution, with margin.
 
-### 8.7 Robustness: seeds and out-of-distribution behaviour
+### 9.3 The deployment contract
+
+A surrogate model, to be dependable, should be accompanied by an explicit verification
+tier. This one has four measured clauses; the machinery behind each lives in Appendix A.
+
+**Stay in the box.** Outside the training box the surrogate degrades *fast*, and
+measurably: on 60 points in a physically sensible ring (ε down to 0.02, Q up to
+1000 W/m), the median error grows from 7.0e-4 in-box to 1.2e-2, with a worst case of
+19.5% at only 9% normalized exceedance. `in_training_box(ε, Q)` in `scripts/config.jl`
+is the guard; screen inside the box, hand anything near the boundary to the FOM (A.1).
+
+**The settled-cycle clause.** The design QoI reads cycle 3 of a 3-cycle run as "the
+settled cycle". A 20-cycle FOM check at two points (A.4): the FOM settles geometrically
+(cycle-to-cycle change 0.028/0.022 K by c19→20); the surrogate's settled-cycle deviation
+stays flat within 1.41× of its cycle-3 value; and the measured qualification is that
+cycle 3 itself sits 1.4–3 K short of the true attractor. That bias is shared by the FOM
+sweep and the surrogate in the design study (both read cycle 3), so rankings are
+unaffected, but absolute worst-case temperatures quoted at "the settled cycle" carry it.
+Normalized time $\tau > 1$ is out of distribution and guarded, the same way
+`in_training_box` guards the steady box.
+
+**Arithmetic.** Float32 inference is lossless at every reported digit; Float16 inference
+survives (rel L² 1.06e-3, ~1 K worst-case field drift), but any $u^4$ evaluation
+overflows Float16 at $T \ge 16.0$ K, i.e. at 100% of operating temperatures, so the
+physics-residual check and any QoI integrand containing $u^4$ must run in Float32 or
+wider (A.3). An 8,642-parameter Float32 model fits edge hardware the FOM never will.
+
+**Many-query readiness.** Forward UQ through the surrogate propagates N = 100,000
+scenarios in 7.5 s; against an exact 10,000-solve FOM Monte Carlo on the same sample
+stream, every reported quantile agrees within 0.71 K (paired; A.5). The per-sample cost
+sits ~590× below the FOM's (44 ms against 75 µs).
+
+### 9.4 Interactive console
+
+`scripts/14_run_console.jl` (GLMakie) solves the steady FOM *live* while you drag
+$(\varepsilon, Q)$; a ~23 ms Newton solve (§9.1) is interactive. Next to it sit the surrogate's
+prediction, the error field, QoI readouts, and both σ-spectra; the transient panel updates
+the surrogate's peak-temperature trace instantly and overlays the true FOM trajectory on
+demand. `CONSOLE_SMOKE=1` renders the same layout headlessly for CI. The console is a
+scoping or calibration tool, not the science.
+
+![Console](../figures/15_console.png)
+
+## 10. Discussion
+
+**What the two branches demonstrate.**
+1. The right-basis thesis survives contact with a strongly nonlinear BC, and it sharpens:
+   for fixed load geometry the steady manifold is rank-2/3 with *all* nonlinearity in
+   $c(\mu)$, the best possible case for coefficient mappers and one that intrusive methods
+   would still have to hyper-reduce their way through. The transient branch shows the
+   diagnosis discriminates: same physics, opposite verdict, measured reason.
+2. Physics metrics do the discriminating. L² errors of the direct and reduced surrogates
+   differ by ~6×; their PDE residuals differ by ~6,000×. Reporting only L² would hide what
+   matters.
+3. The surrogate preserves design rankings (worst-case temperature) at over two orders of
+   magnitude higher throughput end-to-end, making it a practical screening tool inside
+   many-query design loops, in-distribution; batched steady field queries reach 10³–10⁴×.
+4. A methodological marker: a non-intrusive ROM of a strongly nonlinear-BC problem, with
+   an exact Galerkin error decomposition and pre-registered diagnostics, assembled from
+   general-purpose open tooling in an afternoon of glue code. Ten years ago this was
+   utopia: the standard path was an intrusive Galerkin ROM with hand-built
+   hyper-reduction per nonlinearity (DEIM). That it is now routine is a credit to the
+   cited FE and solver ecosystems (Badia & Verdugo 2020; Pal et al. 2024; Rackauckas &
+   Nie 2017).
+
+**What the verification pass produced beyond its verdicts.** Three structural identities
+in one family: the exact discrete energy balance (§2), $P_\text{rad}$ grid-exact to
+1.6e-12 as its corollary, and the mean radiating-edge temperature nodally pinned to
+1.0e-13 by an exact 1D reduction of the y-summed Q1 system (A.2). A pre-registered
+Float16 overflow prediction that missed in the surrogate's favour (A.3). And the
+settled-cycle bias, measured at 1.4–3 K and shown to cancel in rankings (A.4).
+Verification done honestly allows me to show my science.
+
+**Caveats.** 2D, fixed geometry, unity view factor (deep space only), constant properties,
+effective (not measured) $\rho c$, in-distribution queries only (measured: median error
+grows ~17× just outside the training box, worst ~20% at 9% exceedance; A.1), and a single
+PDE family: a controlled prototype, not a general theorem. The steady rank-3 result is a property of the
+fixed load geometry, not of radiation physics; parametric load *placement* would re-thicken
+the steady manifold (future work).
+
+**V&V status (ASME V&V 20 vocabulary).** A terminology note first: every comparison in
+this report is *verification*, a computation checked against a more trusted computation
+or an exact structural identity; *validation* would require physical measurement, which
+this prototype does not attempt. The tiers:
+
+| tier | evidence | status |
+| --- | --- | --- |
+| code verification | MMS through the nonlinear BC, observed L² orders 1.9996–2.0000 (§3); nodally exact 1D radiative equilibrium | complete |
+| solution verification | exact discrete energy balance (measured ~1e-10, §3); nonlinear residual metric on every prediction (§7.1); grid-convergence (GCI) error bands on the FOM QoIs (A.2) | complete |
+| surrogate verification | held-out errors, rank sweeps, N = 20 seed ensembles, measured OOD degradation, exact Galerkin floor (§7, A.1); note surrogate-vs-FOM is verification, not validation | complete |
+| model validation | **unaddressed by design**: 2D section, unity view factor, fixed 3 K deep-space sink, effective ρc; no comparison against measurement or a 3D code | open |
+| uncertainty quantification | forward UQ over (ε, Q) with an exact FOM Monte Carlo reference (A.5) | complete |
+
+The named model-form gap: $T_\text{space}$ is fixed at 3 K (deep space); in LEO,
+Earth-shine and albedo raise the *effective* sink temperature to roughly 250 K, which
+shifts absolute temperatures. The surrogate is trained at fixed $T_\text{space}$, so this
+is a model-form limitation to re-train against, not a random input to sample (the 3 K
+sink term itself is numerically irrelevant, $T_s^4/u^4 \le 10^{-8}$ over the box). A 3D
+cross-code benchmark is declined on purpose: it would test model form, not this study's
+claims, and MMS is the stronger code-verification instrument; the fin-model variant in
+future work is the natural home for one.
+
+## 11. Future work
+
+Next in line: the DeepONet baseline registered in §7.4, protocol and prediction already
+on file. Then: thin-plate fin variant (radiation as a volumetric
+$2\varepsilon\sigma(u^4 - T_s^4)/t$ sink; same Newton machinery); parametric load
+geometry; view factors and orbital environment (solar/albedo as boundary sources); latent
+dynamics for $c(t)$ via the SciML stack (neural ODE / operator inference on
+$\dot c = f(c, \mu, \text{load}(t))$, the exit §8.3 points to) instead of the
+$(\mu, t)$ regression; full DEIM for online reduced-Galerkin; residual-informed training;
+unstructured GridapGmsh geometries; 3D; mass-matrix-weighted POD.
+
+## Appendix A. Verification machinery
+
+Sorting rule for what lives here: checks whose failure would flip a conclusion are cited
+inline in the section that rests on them; their machinery and full tables sit in this
+appendix. Every number is regenerated by the numbered scripts and reprinted from the
+frozen artifacts by `scripts/18_report_numbers.jl`.
+
+### A.1 Seed ensembles, out-of-distribution behaviour, statistics
 
 Are the headlines one lucky seed? Twenty fresh training seeds per deployed mapper
 (`scripts/15_robustness.jl`; deployed models keep their rank-keyed seeds, the ensemble is
@@ -484,7 +720,7 @@ in `data/statistics.jld2`.
 
 ![Seed robustness and OOD degradation](../figures/16_robustness.png)
 
-### 8.8 Grid-convergence error bars on the FOM (GCI)
+### A.2 Grid-convergence error bars on the FOM (GCI)
 
 How much of the "FOM truth" is discretization error? Three systematically refined grids
 (60×30 / 120×60 / 240×120, ratio 2), five Sobol $(\varepsilon, Q)$ points, safety factor
@@ -494,7 +730,7 @@ the hot-node probe temperature (a fixed vertex of all three grids, equal to the 
 $T_\text{peak}$ on the deployment grid) shows observed order $\hat p = 1.99$ at all five
 points, and $\|u_h\|_{L^2}$ shows $\hat p = 2.00$ (N = 5 each). Richardson banding puts
 the **deployment-grid discretization error of the peak temperature at median 0.005 K,
-max 0.010 K**: roughly 500× below the surrogate's 2.4 K median design-QoI error (§8.6),
+max 0.010 K**: roughly 500× below the surrogate's 2.4 K median design-QoI error (§9.2),
 so the reference the surrogate is judged against is nowhere the limiting error.
 
 The pre-registered round-1 scorecard: one hit, two instructive misses.
@@ -511,11 +747,11 @@ tensor-product Q1 grid the $y$-summed discrete system reduces exactly to a 1D pr
 whose data (the $y$-integrated load and the exactly balanced edge flux) are
 grid-independent, pinning the edge mean nodally. A third structural identity in the same
 family as the discrete energy balance. Transient GCI is deferred: the transient
-reference is integrator-tolerance-controlled (§8.3) and is not banded here.
+reference is integrator-tolerance-controlled (§3) and is not banded here.
 
 ![Grid convergence of the hot-node temperature](../figures/23_gci.png)
 
-### 8.9 Precision audit: what arithmetic does deployment need?
+### A.3 Precision audit: what arithmetic does deployment need?
 
 Casting the entire steady inference pipeline (inputs, network weights, whitening scales,
 POD mean and modes) to reduced precision and re-evaluating the 102-sample test set
@@ -538,9 +774,9 @@ temperatures. Edge-compute reading: field *inference* is Float32-safe (even
 Float16-tolerant at the $10^{-3}$ level), but the physics-residual check and any QoI
 integrand containing $u^4$ must run in Float32 or wider.
 
-### 8.10 Attractor check: 20 cycles against the 3-cycle deployment contract
+### A.4 Attractor check: 20 cycles against the 3-cycle deployment contract
 
-The design QoI (§8.6) reads cycle 3 of a 3-cycle run as "the settled cycle". The mapper
+The design QoI (§9.2) reads cycle 3 of a 3-cycle run as "the settled cycle". The mapper
 is feedforward in $(\mu, \tau, \text{phase})$, so autoregressive drift is structurally
 impossible; what could fail is the contract itself. Two parameter points, FOM run to 20
 cycles, surrogate predicting its fixed settled-cycle trace by phase mapping
@@ -554,7 +790,7 @@ header; $\tau > 1$ is never queried, it is OOD by the deployment contract):
 - **Deviation flatness (hit on the registered 2× bound, with one measured
   qualification).** The per-cycle deviation between the surrogate's fixed settled-cycle
   trace and FOM cycles 3–20 stays within [0.81, 1.41]× and [0.84, 1.13]× of its cycle-3
-  value (7.4 K and 10.2 K, consistent with the §8.4 error level). It is not constant,
+  value (7.4 K and 10.2 K, consistent with the §8.2 error level). It is not constant,
   though: it rises by +3.0 K and +1.4 K before saturating, and the rise tracks the FOM's
   own settling tail exactly. Read structurally: the training data's cycle 3 sits 1.4–3 K
   short of the true attractor at these points. That bias is shared by the FOM sweep and
@@ -567,7 +803,7 @@ same way `in_training_box` guards the steady $(\varepsilon, Q)$ box.
 
 ![Attractor check](../figures/25_attractor_check.png)
 
-### 8.11 Forward UQ with an exact FOM reference
+### A.5 Forward UQ with an exact FOM reference
 
 Input uncertainty, stated here and used nowhere else: $\varepsilon \sim
 \mathcal N(0.85, 0.02)$ (coating tolerance around a high-emissivity design point) and
@@ -594,87 +830,13 @@ magnitude inside the registered bound. The 3σ statement a designer would use: t
 quantile of worst-case temperature is 690.7 K by FOM against 689.1 K by the surrogate at
 N = 10⁵, and the paired column shows only +0.7 K of that gap is surrogate error; the
 rest is FOM-side Monte Carlo noise in a thin tail at N = 10⁴. For tail quantiles the
-surrogate's N = 10⁵ estimate is the better-converged one, at a per-sample cost ~60,000×
-below the FOM's. $T_\text{space}$ stays fixed at 3 K throughout: a model-form limitation
+surrogate's N = 10⁵ estimate is the better-converged one, at a per-sample cost ~590×
+below the FOM's (44 ms against 75 µs). $T_\text{space}$ stays fixed at 3 K throughout: a
+model-form limitation
 (§10), not a random input; re-training at an Earth-shine effective sink, not sampling
 the sink, is the correct treatment.
 
 ![Forward UQ](../figures/26_forward_uq.png)
-
-## 9. Interactive console
-
-`scripts/14_run_console.jl` (GLMakie) solves the steady FOM *live* while you drag
-$(\varepsilon, Q)$; a ~23 ms Newton solve (§8.2) is interactive. Next to it sit the surrogate's
-prediction, the error field, QoI readouts, and both σ-spectra; the transient panel updates
-the surrogate's peak-temperature trace instantly and overlays the true FOM trajectory on
-demand. `CONSOLE_SMOKE=1` renders the same layout headlessly for CI. The console is the
-microscope, not the science.
-
-![Console](../figures/15_console.png)
-
-## 10. Discussion
-
-**What this demonstrates.**
-1. The right-basis thesis survives contact with a strongly nonlinear BC, and it sharpens:
-   for fixed load geometry the steady manifold is rank-2/3 with *all* nonlinearity in
-   $c(\mu)$, the best possible case for coefficient mappers and one that intrusive methods
-   would still have to hyper-reduce their way through.
-2. Physics metrics do the discriminating. L² errors of the direct and reduced surrogates
-   differ by ~6×; their PDE residuals differ by ~6,000×. Reporting only L² would hide what
-   matters.
-3. The surrogate preserves design rankings (worst-case temperature) at over two orders of
-   magnitude higher throughput end-to-end, making it a practical screening tool inside
-   many-query design loops, in-distribution; batched steady field queries reach 10³–10⁴×.
-4. A methodological marker: a non-intrusive ROM of a strongly nonlinear-BC problem, with
-   an exact Galerkin error decomposition and pre-registered diagnostics, assembled from
-   general-purpose open tooling in an afternoon of glue code. Ten years ago this was
-   utopia: the standard path was an intrusive Galerkin ROM with hand-built
-   hyper-reduction per nonlinearity (DEIM). That it is now routine is a credit to the
-   cited FE and solver ecosystems (Badia & Verdugo 2020; Pal et al. 2024; Rackauckas &
-   Nie 2017).
-
-**Caveats.** 2D, fixed geometry, unity view factor (deep space only), constant properties,
-effective (not measured) $\rho c$, in-distribution queries only (measured: median error
-grows ~17× just outside the training box, worst ~20% at 9% exceedance; §8.7), and a single
-PDE family: a controlled prototype, not a general theorem. The steady rank-3 result is a property of the
-fixed load geometry, not of radiation physics; parametric load *placement* would re-thicken
-the steady manifold (future work).
-
-**V&V status (ASME V&V 20 vocabulary).** A terminology note first: every comparison in
-this report is *verification*, a computation checked against a more trusted computation
-or an exact structural identity; *validation* would require physical measurement, which
-this prototype does not attempt. The tiers:
-
-| tier | evidence | status |
-| --- | --- | --- |
-| code verification | MMS through the nonlinear BC, observed L² orders 1.9996–2.0000 (§4); nodally exact 1D radiative equilibrium | complete |
-| solution verification | exact discrete energy balance (measured ~1e-10, §4); nonlinear residual metric on every prediction (§7); grid-convergence (GCI) error bands on the FOM QoIs (§8.8) | complete |
-| surrogate verification | held-out errors, rank sweeps, N = 20 seed ensembles, measured OOD degradation, exact Galerkin floor (§8); note surrogate-vs-FOM is verification, not validation | complete |
-| model validation | **unaddressed by design**: 2D section, unity view factor, fixed 3 K deep-space sink, effective ρc; no comparison against measurement or a 3D code | open |
-| uncertainty quantification | forward UQ over (ε, Q) with an exact FOM Monte Carlo reference (§8.11) | complete |
-
-The named model-form gap: $T_\text{space}$ is fixed at 3 K (deep space); in LEO,
-Earth-shine and albedo raise the *effective* sink temperature to roughly 250 K, which
-shifts absolute temperatures. The surrogate is trained at fixed $T_\text{space}$, so this
-is a model-form limitation to re-train against, not a random input to sample (the 3 K
-sink term itself is numerically irrelevant, $T_s^4/u^4 \le 10^{-8}$ over the box). A 3D
-cross-code benchmark is declined on purpose: it would test model form, not this study's
-claims, and MMS is the stronger code-verification instrument; the fin-model variant in
-future work is the natural home for one.
-
-## 11. Future work
-
-Next in line, with a pre-registered prediction already on file: a **DeepONet baseline**
-(NeuralOperators.jl, branch on $\tilde\mu$, trunk on $x$, same snapshots and budget, plus a
-3× parameter-count variant). Registered wedge: at matched budgets DeepONet should be
-competitive on rel L² but worse on PDE residual and sample efficiency at 410 snapshots;
-note that the parent project's exact-BC wedge does **not** apply here (config B has no
-Dirichlet BC). Then: thin-plate fin variant (radiation as a volumetric
-$2\varepsilon\sigma(u^4 - T_s^4)/t$ sink; same Newton machinery); parametric load
-geometry; view factors and orbital environment (solar/albedo as boundary sources); latent
-dynamics for $c(t)$ via the SciML stack (neural ODE / operator inference) instead of the
-$(\mu, t)$ regression; full DEIM for online reduced-Galerkin; residual-informed training;
-unstructured GridapGmsh geometries; 3D; mass-matrix-weighted POD.
 
 ## References
 
@@ -686,9 +848,9 @@ unstructured GridapGmsh geometries; 3D; mass-matrix-weighted POD.
 - Parametric regularity and widths: Cohen, DeVore & Schwab, Anal. Appl. 2011; Cohen &
   DeVore, IMA J. Numer. Anal. 2016; Lassila, Manzoni, Quarteroni & Rozza 2013; Bachmayr &
   Cohen, Math. Comp. 2017; Chkifa, Cohen & Schwab, J. Math. Pures Appl. 2015.
-- Nonlinear/compressive reduced bases (linear width vs intrinsic dimension): Ballout,
-  Maday & Prud'homme, arXiv:2407.03769, 2024; Cohen, Dahmen, Dolbeault & Somacal,
-  arXiv:2304.10971, 2023.
+- Nonlinear/compressive reduced bases (linear width vs intrinsic dimension):
+  Prud'homme, Maday & Ballout, arXiv:2407.03769, 2024; Cohen, Dolbeault, Somacal &
+  Dahmen, arXiv:2304.10971, 2023.
 - Kolmogorov–Arnold networks: Liu et al., 2024; `KolmogorovArnold.jl`.
-- Parent project: [TommyDanMa/afw](https://github.com/TommyDanMa/afw), *Learning PDE
-  Solution Operators in the Right Basis* (report in `report/report.md` there).
+- Parent project: [TommyDanMa/reduced-basis-neural-surrogates](https://github.com/TommyDanMa/reduced-basis-neural-surrogates),
+  *Learning PDE Solution Operators in the Right Basis* (report in `report/report.md` there).

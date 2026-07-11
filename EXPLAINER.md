@@ -124,4 +124,5 @@ controlled prototype that demonstrates a principle, not a certified spacecraft t
 - **Duty cycle:** the fraction of time the electronics are switched on.
 
 *The original linear-plate study this grew out of lives at
-[TommyDanMa/afw](https://github.com/TommyDanMa/afw), with its own plain-language tour.*
+[TommyDanMa/reduced-basis-neural-surrogates](https://github.com/TommyDanMa/reduced-basis-neural-surrogates),
+with its own plain-language tour.*
