@@ -51,7 +51,7 @@ set our parameter regime; this prototype is a methods study, not their tool.*
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
 julia --project=. test/runtests.jl              # test suite (CI runs this too)
 julia --project=. scripts/00_run_all.jl         # full reproduction, ~2 h
-# or step through scripts/01 ... 28 individually; the live console:
+# or step through scripts/01 ... 29 individually; the live console:
 julia --project=. scripts/14_run_console.jl
 ```
 
@@ -81,13 +81,14 @@ button-press away:
   (mass-matrix ODE form, square-wave loads via `tstops`), `postprocess.jl` (radiated power,
   peak T, energy balance), plus `pod.jl` / `models.jl` / `metrics.jl` ported from the parent
   project (`models_kan.jl` / `models_deeponet.jl` stay out of the core module).
-- `scripts/01–28`: numbered, deterministic (StableRNGs + Sobol): validate steady, steady
+- `scripts/01–29`: numbered, deterministic (StableRNGs + Sobol): validate steady, steady
   dataset/POD/mappers/eval/benchmark, validate transient, transient dataset/space-time
   POD/mapper/eval, Nr study, design study, console (01–14); robustness, grid
   independence, mapper diagnostics, rank predictions, statistics, Galerkin floor,
   eigenmode diagnostic, cliff reconstruction (15–23); V&V tightening: GCI error bars,
-  precision audit, attractor check, forward UQ (24–27); pre-registered DeepONet
-  baseline (28). `18_report_numbers.jl` reprints
+  precision audit, attractor check, forward UQ (24–27); pre-registered
+  operator-learning baseline, DeepONet (28), and its small-M probe (29).
+  `18_report_numbers.jl` reprints
   every headline table from `data/`.
 - `test/`: eight named test files (51 assertions): MMS rates 1.9996/1.9999/2.0000 through
   the nonlinear BC, AD = FD = hand-written Jacobian, exact discrete energy balance,
@@ -115,9 +116,9 @@ replicates at 120×60 and with P2
 elements; out-of-distribution the median error grows ~17× just outside the box, so queries
 should stay inside `in_training_box`.
 
-Competing-method check, pre-registered and run (scripts/28; NeuralOperators.jl
-DeepONet, equal 8,656-parameter and 3× budgets, matched data-only training, N = 20
-seeds/arm):
+Operator-learning baseline, pre-registered and run (scripts/28; DeepONet via
+NeuralOperators.jl, equal 8,656-parameter and 3× budgets, matched data-only training,
+N = 20 seeds/arm):
 competitive on rel L² (3.3e-3) but 283× worse on PDE residual (1.85 vs 6.5e-3); with
 the trunk frozen to the POD basis the residual gap collapses 15×, so the learned basis
 carries it. Two of four registered predictions missed and are reported as misses

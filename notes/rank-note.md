@@ -211,8 +211,8 @@ constraints. What survives as plausibly ours: (i) the cross-configuration cliff
 reconstruction of §4b (weighted collinearity = POD cliff to ~25% on seven configurations);
 (ii) the parity selection rule as an exact structural constraint; (iii) the §2(a)
 collapses run as pre-registered falsification tests, a move the width literature does not
-make. Baseline run (pre-registered, `scripts/28`): a DeepONet at matched budget and
-training is competitive on L² (3.3e-3 against 1.35e-3, ensemble means, N = 20) but
+make. Baseline run (pre-registered, `scripts/28`): an operator-learning baseline
+(DeepONet) at matched budget and training is competitive on L² (3.3e-3 against 1.35e-3, ensemble means, N = 20) but
 283× worse on PDE residual; freezing its trunk to the POD basis recovers 15× of the
 gap, so the learned basis carries it. Two of four registered predictions missed and
 are recorded (report §7.4). Full DEIM stays dropped, since §6 already delivers the
@@ -231,8 +231,9 @@ For discussion:
    known to fail (Kim, Ji, Deng, Ma & Rackauckas 2021: output scaling, loss choice,
    stabilized gradients). Is that the right next formulation here, and what training
    protocol (solver, sensitivity method, loss scaling) would you start from?
-3. DeepONet protocol: same 410 snapshots, equal and 3× parameter budgets, matched
-   gradient-step budget, loss curves overlaid, PDE residual as the primary metric, and a
+3. Operator-learning baseline (DeepONet) protocol: same 410 snapshots, equal and 3×
+   parameter budgets, matched gradient-step budget, loss curves overlaid, PDE residual
+   as the primary metric, and a
    third arm with the trunk frozen to the POD basis to isolate the basis choice (config B
    has no Dirichlet BC, so the classical exact-BC wedge does not apply here). Anything
    missing?

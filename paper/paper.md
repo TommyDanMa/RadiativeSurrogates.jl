@@ -40,7 +40,7 @@ element-independence checks; structural rank experiments pre-registered in
 script headers before first run, with misses reported as misses; exact
 reduced-Galerkin error floors that split surrogate error into basis error and
 coefficient-map error; and verification artifacts rarely shipped with
-surrogates — grid-convergence (GCI) error bands on the full-order quantities
+surrogates: grid-convergence (GCI) error bands on the full-order quantities
 of interest, N-seed training ensembles, a measured out-of-distribution guard,
 a floating-point precision audit, and forward uncertainty propagation checked
 against an exact full-order Monte Carlo reference. Every number in the
@@ -51,8 +51,8 @@ diff-able printer script.
 # Statement of need
 
 Non-intrusive reduced-order modeling is widely used, but the *decision* it
-rests on — whether the solution manifold is intrinsically low-dimensional, so
-that learning a handful of coefficients is the right factorization — is
+rests on (whether the solution manifold is intrinsically low-dimensional, so
+that learning a handful of coefficients is the right factorization) is
 usually assumed rather than tested. `RadiativeSurrogates.jl` provides a
 compact, fully reproducible testbed in which that decision is made
 explicitly, on a problem with genuine boundary nonlinearity, and in which the

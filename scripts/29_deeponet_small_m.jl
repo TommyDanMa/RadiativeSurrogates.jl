@@ -57,7 +57,8 @@
 #   M = 102 was drawn where the regime actually changes.
 #
 # AMENDMENT (2026-07-11, appended after the RESULT): report §7.4 gains a one-sentence
-#   existence pointer to this probe (no numbers, no direction claimed). The registered
+#   existence pointer to this probe (no numbers, no direction claimed), and the README
+#   script inventory lists this file. The registered
 #   "no report entry" clause was mis-scoped: it was meant to bar claims, and silence
 #   would have left §7.4's "below M = 102 nothing is measured" standing false once
 #   this script entered the repo. The no-claims clause stands: the outcome is not

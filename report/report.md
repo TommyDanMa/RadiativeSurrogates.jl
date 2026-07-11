@@ -24,7 +24,10 @@ collinearity mechanism that reconstructs the cliff to ~25% across seven configur
 An exact reduced-Galerkin floor certifies the architecture: at the deployed rank,
 100% of the surrogate's error is coefficient-map error, and an 8,642-parameter
 whitened MLP reaches $9.2\cdot10^{-4}$ relative $L^2$ with a PDE residual ~6,000×
-smaller than a direct field MLP's, at thousands of times the FOM's throughput.
+smaller than a direct field MLP's, at thousands of times the FOM's throughput. A
+pre-registered operator-learning baseline (DeepONet, matched budgets and data) is
+competitive in $L^2$ but 283× worse in PDE residual; freezing its trunk to the POD
+basis collapses the gap 15×, locating the physics in the basis.
 **Transient case: not yet, for a measured reason.** Load switching re-thickens the
 manifold ($\sigma_8/\sigma_1 \approx 3\cdot10^{-5}$); the $(\mu, t) \mapsto c$ mapper
 plateaus at 1.7%, and its learning curve (slopes 0.82/1.10) shows the plateau is
@@ -57,19 +60,32 @@ plateau on data, not on the basis (§8). Opposite verdicts on the same physics, 
 and pipeline, each confirmed downstream. The test:
 
 ```mermaid
+%%{init: {"flowchart": {"padding": 18, "nodeSpacing": 55, "rankSpacing": 55, "diagramPadding": 14}}}%%
 flowchart TD
-    A["New parametric PDE problem:<br/>surrogate architecture to choose"] --> B["<b>1 · Verify the solver</b><br/>MMS order, energy balance, Jacobians"]
-    B -- "fails" --> B2["fix the solver first"] --> B
+    A(["New parametric PDE problem:<br/>surrogate architecture to choose"])
+    A --> B["<b>1 · Verify the solver</b><br/>MMS order · energy balance · Jacobians"]
+    B -- "fails" --> B2["fix the solver first"]
+    B2 --> B
     B -- "verified" --> C["<b>2 · Measure the spectrum</b><br/>snapshots → POD σ-decay"]
-    C --> C2["<b>2b · Verify the measurement</b><br/>grid & element independence,<br/>reconstruction floor at r"]
+    C --> C2["<b>2b · Verify the measurement</b><br/>grid & element independence ·<br/>reconstruction floor at r"]
     C2 -- "spectrum moves with the mesh:<br/>you measured the discretization" --> C
-    C2 -- "invariant" --> D["<b>3 · Test structural hypotheses</b><br/>exact parameter collapses,<br/>coefficient-function collinearity"]
+    C2 -- "invariant" --> D["<b>3 · Test structural hypotheses</b><br/>exact parameter collapses ·<br/>coefficient-function collinearity"]
     D --> E["<b>4 · Pre-register predictions, run them</b><br/>misses are results"]
-    E -- "miss → structure not understood" --> D
+    E -- "miss: structure not understood" --> D
     E -- "hits" --> F{"intrinsically<br/>low-dimensional?<br/>(hard σ-cliff)"}
-    F -- "yes" --> G["<b>Coefficient learning:</b> μ ↦ c"]
-    G --> G2["<b>5 · Certify and ship with a contract</b><br/>Galerkin floor (error lives in the map) ·<br/>N-seed spread · OOD guard ·<br/>reference error band (GCI)"]
-    F -- "no: slow decay<br/>(transport, switching, moving loads)" --> H["<b>Don't.</b><br/>more data · latent dynamics ·<br/>nonlinear ROM · operator learning"]
+    F -- "yes" --> G["<b>Coefficient learning</b>: μ ↦ c"]
+    G --> G2("<b>5 · Certify the deployment</b><br/>Galerkin floor: error lives in the map<br/>N-seed spread · OOD guard<br/>reference error band (GCI)")
+    F -- "no: slow decay<br/>(transport, switching, moving loads)" --> H("<b>Don't.</b><br/>more data · latent dynamics<br/>nonlinear ROM · operator learning")
+    classDef step stroke-width:1.5px
+    classDef gate stroke-width:2.5px
+    classDef go stroke:#2e7d32,stroke-width:2.5px
+    classDef redirect stroke:#ef6c00,stroke-width:2.5px
+    classDef fixloop stroke-dasharray:4 3
+    class B,C,C2,D,E,G step
+    class F gate
+    class G2 go
+    class H redirect
+    class B2 fixloop
 ```
 
 *The diagnostic this report walks, twice. Every box is a numbered artifact in this
@@ -238,7 +254,7 @@ decaying Kolmogorov widths; the smoothness-to-decay half of the argument is stan
 (Cohen–DeVore–Schwab and successors; references at the end). This explains *fast* decay.
 It does not explain where the cliff sits.
 
-**Mechanism.** With the load geometry fixed, varying $Q$ scales the linear source-response shape exactly. Varying $\varepsilon$ moves the radiative-equilibrium level — the amplitude of the constant mode. That amplitude depends on $\varepsilon$ strongly and nonlinearly, but the shape it multiplies is fixed, and POD rank sees only shapes. So the nonlinearity lives entirely in the coefficient map $c(\mu)$, which is what a learned mapper is for.
+**Mechanism.** With the load geometry fixed, varying $Q$ scales the linear source-response shape exactly. Varying $\varepsilon$ moves the radiative-equilibrium level, the amplitude of the constant mode. That amplitude depends on $\varepsilon$ strongly and nonlinearly, but the shape it multiplies is fixed, and POD rank sees only shapes. So the nonlinearity lives entirely in the coefficient map $c(\mu)$, which is what a learned mapper is for.
 (What re-thickens the manifold is transients, not parameters; §8.)
 
 If this explanation is right, it predicts. Three tests were pre-registered in
@@ -252,7 +268,7 @@ If this explanation is right, it predicts. Three tests were pre-registered in
 
 ## 6. The predictions: two hits, one miss, and what the miss exposed
 
-Each prediction targets a different way the explanation could fail: P1, whether load shapes really contribute one direction each; P2, whether the $Q/k$ collapse — not the parameter count — sets the rank; P3, whether analyticity sets the *scale* of the cliff. A hit supports the mechanism; a miss localizes which part is not yet understood. Scored against `scripts/19_rank_prediction.jl`:
+Each prediction targets a different way the explanation could fail: P1, whether load shapes really contribute one direction each; P2, whether the $Q/k$ collapse, not the parameter count, sets the rank; P3, whether analyticity sets the *scale* of the cliff. A hit supports the mechanism; a miss localizes which part is not yet understood. Scored against `scripts/19_rank_prediction.jl`:
 
 - **P1, hit.** The cliff moves down by exactly one mode:
   $\sigma_4/\sigma_1 = 8.3\cdot10^{-6}$.
@@ -355,7 +371,7 @@ The parent's non-monotonicity lesson recurs *in extremis*: mode 3 is numerically
 the network fit noise and measurably degrade both metrics. Model selection by held-out
 error, not by σ-decay alone, picks r = 2.
 
-Seed robustness, inline (full machinery in A.1): twenty fresh seeds varying the network initialization only give 1.35e-3 ± 0.18e-3, range [9.69e-4, 1.67e-3] (N = 20). The deployed model's 9.18e-4 beats all twenty — it is a favourable seed, stated plainly in A.1. What does *not* depend on the seed is every conclusion: MLP < KAN, both ≪ direct, the r = 2 optimum, all surviving all twenty. Paired bootstrap
+Seed robustness, inline (full machinery in A.1): twenty fresh seeds varying the network initialization only give 1.35e-3 ± 0.18e-3, range [9.69e-4, 1.67e-3] (N = 20). The deployed model's 9.18e-4 beats all twenty: it is a favourable seed, stated plainly in A.1. What does *not* depend on the seed is every conclusion: MLP < KAN, both ≪ direct, the r = 2 optimum, all surviving all twenty. Paired bootstrap
 differences on the same 102 test parameters exclude zero: KAN − MLP = +2.0e-3
 [1.6, 2.4]e-3, direct − MLP = +4.9e-3 [4.4, 5.4]e-3 rel L² (B = 10,000). The ordering is
 not seed luck.
@@ -376,15 +392,16 @@ any surrogate confined to the POD subspace. Mean over the 102 test parameters:
 
 At and above the manifold rank the Galerkin floor equals the L² projection floor to every
 digit measured (table: $1.14\text{e-}9 = 1.14\text{e-}9$ at $r=2$), so none of the deployed
-surrogate's error is basis error — all of it is in the coefficient map. Below it ($r=1$)
+surrogate's error is basis error: all of it is in the coefficient map. Below it ($r=1$)
 the mapper already sits at the basis floor. The crossover tells you, per rank, whether to
 spend effort on the basis or on the map.
 
-### 7.4 The registered comparison: DeepONet (run 2026-07-11)
+### 7.4 The registered operator-learning baseline: DeepONet (run 2026-07-11)
 
 The protocol registered here ran with predictions D1–D4 pre-registered in the script
 header before the first run and the scorecard appended after
-(`scripts/28_deeponet_baseline.jl`): a DeepONet (NeuralOperators.jl v0.6.4; branch on
+(`scripts/28_deeponet_baseline.jl`): an operator-learning baseline, DeepONet (Lu et
+al. 2021; NeuralOperators.jl v0.6.4; branch on
 $\tilde\mu$, trunk on $x$, p = 8 latent functions) on the same 410 snapshots, at equal
 and 3× parameter budgets, the POD-MLP's training schedule byte-for-byte (6,000
 full-batch Adam epochs, geometric lr anneal, keep-best), scaled-field MSE for every
@@ -531,8 +548,8 @@ to eight).
 
 **Why the plateau (diagnosed, `scripts/17_mapper_diagnostics.jl`).** Two measurements pin it
 down. The learning curve is steep: 24 → 48 → 77 training trajectories give errors
-5.2e-2 → 3.0e-2 → 1.8e-2, slopes 0.82 and 1.10 in $M$ — near $M^{-1}$, far steeper than the
-statistical $M^{-1/2}$. The plateau is therefore **data-limited, not basis-limited**: more
+5.2e-2 → 3.0e-2 → 1.8e-2, slopes 0.82 and 1.10 in $M$ (near $M^{-1}$, far steeper than the
+statistical $M^{-1/2}$). The plateau is therefore **data-limited, not basis-limited**: more
 trajectories would buy accuracy directly. The per-mode view shows the same signal-to-noise
 collapse as the parent project: modes 1–4 are learned to 7–22% relative error, mode 6 to
 87%, and modes 7–8 are pure noise (relative error > 1), which is exactly why the rank sweep
@@ -733,14 +750,17 @@ future work is the natural home for one.
 
 ## 11. Future work
 
-The DeepONet baseline has run (§7.4: two hits, two instructive misses). Next:
-thin-plate fin variant (radiation as a volumetric
-$2\varepsilon\sigma(u^4 - T_s^4)/t$ sink; same Newton machinery); parametric load
-geometry; view factors and orbital environment (solar/albedo as boundary sources); latent
-dynamics for $c(t)$ via the SciML stack (neural ODE / operator inference on
-$\dot c = f(c, \mu, \text{load}(t))$, the exit §8.3 points to) instead of the
-$(\mu, t)$ regression; full DEIM for online reduced-Galerkin; residual-informed training;
-unstructured GridapGmsh geometries; 3D; mass-matrix-weighted POD.
+The operator-learning baseline has run (§7.4: two hits, two instructive misses). First,
+the exit §8.3 licenses: latent dynamics for $c(t)$, learning
+$\dot c = f(c, \mu, \text{load}(t))$ through the solver instead of the $(\mu, t)$
+regression, as a neural ODE / UDE on the coefficients or as operator inference on the
+reduced system (Peherstorfer & Willcox 2016); the load switches make the training
+problem stiff, so the crux is adjoint gradients through a stiff integrator. Then:
+thin-plate fin variant (radiation as a volumetric $2\varepsilon\sigma(u^4 - T_s^4)/t$
+sink; same Newton machinery); parametric load geometry; view factors and orbital
+environment (solar/albedo as boundary sources); full DEIM for online reduced-Galerkin;
+residual-informed training; unstructured GridapGmsh geometries; 3D;
+mass-matrix-weighted POD.
 
 ## Appendix A. Verification machinery
 
@@ -912,6 +932,7 @@ the sink, is the correct treatment.
 - NonlinearSolve.jl / OrdinaryDiffEq.jl: Pal et al. 2024; Rackauckas & Nie 2017.
 - Reduced-basis methods: Quarteroni, Manzoni & Negri, *Reduced Basis Methods for PDEs*, 2016.
 - DEIM: Chaturantabut & Sorensen, SIAM J. Sci. Comput. 2010.
+- DeepONet: Lu, Jin, Pang, Zhang & Karniadakis, Nat. Mach. Intell. 3, 218–229, 2021.
 - Operator-learning comparison methodology and POD-DeepONet: Lu, Meng, Cai, Mao,
   Goswami, Zhang & Karniadakis, Comput. Methods Appl. Mech. Eng., 2022
   (arXiv:2111.05512).
