@@ -408,7 +408,7 @@ full-batch Adam epochs, geometric lr anneal, keep-best), scaled-field MSE for ev
 arm, N = 20 init-only seeds per arm, a trunk-frozen-to-$\Phi_2$ arm isolating
 learned-basis vs fixed-basis (the POD-DeepONet configuration of Lu et al. 2022, the
 operator-learning community's own fixed-basis variant), and a sample-efficiency curve
-at M ∈ {102, 205, 410} (N = 5). Two predictions hit, two missed; the misses are the interesting part.
+at $M \in \{102, 205, 410\}$ (N = 5). Two predictions hit, two missed; the misses are the interesting part.
 
 | arm | params | rel L² (N = 20) | residual ‖R(û)‖/‖F‖ (N = 20) |
 | --- | ---: | ---: | ---: |
@@ -452,14 +452,14 @@ gets both right.
 
 **D4, miss; the frame was wrong, not the numbers.** Registered: DeepONet degrades more
 than the POD-MLP as the training set drops 410 → 102. Measured: DeepONet barely moves
-(4.36 → 3.29 → 3.67e-3 across M, flat within seed noise) while the POD-MLP converts
+(4.36 → 3.29 → 3.67e-3 across $M$, flat within seed noise) while the POD-MLP converts
 data into accuracy (2.09 → 1.46 → 1.43e-3). DeepONet is not data-hungry here; it is
 *saturated* at an architecture-set floor that more data cannot buy through. Within the
-measured range the POD-MLP leads at every M (2.1–2.6×). Below M = 102 a registered
-probe (M ∈ {13, 26, 51}, N = 5; `scripts/29`) came back inconclusive by its own
+measured range the POD-MLP leads at every $M$ (2.1–2.6×). Below $M = 102$ a registered
+probe ($M \in \{13, 26, 51\}$, N = 5; `scripts/29`) came back inconclusive by its own
 registered criterion: the two methods are indistinguishable there, both data-limited;
 no direction is claimed. "Worse sample efficiency" mispredicted the direction of the phenomenon: at
-larger M the gap widens. Read fairly, the flat curve is also a strength: the DeepONet
+larger $M$ the gap widens. Read fairly, the flat curve is also a strength: the DeepONet
 reaches its own floor with a quarter of the data; what it pays is the height of that
 floor.
 
@@ -613,8 +613,8 @@ remains the structure (rank-2 basis, physics metrics), not the raw speed-up.
 ### 9.2 Design ranking at throughput
 
 The capstone reproduces the project's stated success criterion, a tool for testing subtle
-design changes. Candidate designs: a 10×10 grid over emissivity coating ε ∈ [0.15, 0.9] and
-load duty ∈ [0.25, 0.75]; QoI = worst-case chip temperature over the final (settled) load
+design changes. Candidate designs: a 10×10 grid over emissivity coating $\varepsilon \in [0.15, 0.9]$ and
+load $\text{duty} \in [0.25, 0.75]$; QoI = worst-case chip temperature over the final (settled) load
 cycle. Two operating points guard against the result being a one-off.
 
 | | OP1: $Q_p$=650 W/m, 5400 s | OP2: $Q_p$=400 W/m, 9000 s |
