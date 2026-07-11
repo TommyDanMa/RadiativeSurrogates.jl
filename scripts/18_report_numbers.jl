@@ -204,3 +204,24 @@ if need(joinpath(DATA_DIR, "forward_uq.jld2"))
     @printf("paired |sur − FOM| (N = %d): median %.2f K, max %.2f K\n",
             uq["n_fom"], uq["d_med"], uq["d_max"])
 end
+
+if need(joinpath(DATA_DIR, "deeponet.jld2"))
+    dn = load(joinpath(DATA_DIR, "deeponet.jld2"))
+    println("\n## §7.4 DeepONet baseline (N = $(dn["nseeds"]) seeds/arm, " *
+            "$(dn["epochs"]) epochs, matched budget)")
+    for name in ("equal", "3x", "frozen")
+        a = dn["arms"][name]
+        @printf("%-6s %6d params | rel %.2e ± %.1e | resid %.2e ± %.1e | dep: rel %.2e resid %.2e ΔP/P %.1e ΔT %.1f K\n",
+                name, a["params"], mean(a["rels"]), std(a["rels"]),
+                mean(a["resids"]), std(a["resids"]),
+                a["dep_rel"], a["dep_resid"], a["dep_dP"], a["dep_dT"])
+    end
+    c = dn["curve"]
+    @printf("sample efficiency (N = %d seeds): M = %s | DON %s | MLP %s\n",
+            dn["ncurve"], join(c["Ms"], "/"),
+            join((@sprintf("%.2e", v) for v in vec(mean(c["don"]; dims = 1))), " "),
+            join((@sprintf("%.2e", v) for v in vec(mean(c["mlp"]; dims = 1))), " "))
+    s = dn["scores"]
+    println("registered scores: " *
+            join(("$k $(s[k] ? "HIT" : "MISS")" for k in ("D1", "D2", "D3", "D4")), "  "))
+end

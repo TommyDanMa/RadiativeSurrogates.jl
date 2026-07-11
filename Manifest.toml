@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "19232280cf42c0194de34dff2b5517752523f925"
+project_hash = "17ad1bfcb226335ef6730dddb344a34e45c35cf7"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "d9aaef7c63466eee4de23b4d9dad03629df54bea"
@@ -1909,6 +1909,12 @@ version = "1.1.1"
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.3.0"
 
+[[deps.NeuralOperators]]
+deps = ["AbstractFFTs", "ConcreteStructs", "Lux", "LuxCore", "LuxLib", "NNlib", "Random", "WeightInitializers"]
+git-tree-sha1 = "cce4ca3ab64ad9724936ac3ece3ccfcb8039a5eb"
+uuid = "ea5c82af-86e5-48da-8ee1-382d6ad7af4b"
+version = "0.6.4"
+
 [[deps.NonlinearSolve]]
 deps = ["ADTypes", "ArrayInterface", "BracketingNonlinearSolve", "CommonSolve", "ConcreteStructs", "DifferentiationInterface", "FastClosures", "FiniteDiff", "ForwardDiff", "LineSearch", "LinearAlgebra", "LinearSolve", "NonlinearSolveBase", "NonlinearSolveFirstOrder", "NonlinearSolveQuasiNewton", "NonlinearSolveSpectralMethods", "PrecompileTools", "Preferences", "Reexport", "SciMLBase", "Setfield", "SimpleNonlinearSolve", "StaticArraysCore", "SymbolicIndexingInterface"]
 git-tree-sha1 = "fa84bceaa43cc91db844b4e869f50f53e2b797bc"
@@ -2375,7 +2381,7 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 version = "1.11.0"
 
 [[deps.RadiativeSurrogates]]
-deps = ["BenchmarkTools", "CairoMakie", "ComponentArrays", "ForwardDiff", "GLMakie", "Gridap", "JLD2", "KolmogorovArnold", "LineSearches", "LinearAlgebra", "Lux", "Makie", "NonlinearSolve", "Optimisers", "OrdinaryDiffEq", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "SparseArrays", "StableRNGs", "Statistics", "Test", "Zygote"]
+deps = ["BenchmarkTools", "CairoMakie", "ComponentArrays", "ForwardDiff", "GLMakie", "Gridap", "JLD2", "KolmogorovArnold", "LineSearches", "LinearAlgebra", "Lux", "Makie", "NonlinearSolve", "Optimisers", "OrdinaryDiffEq", "OrdinaryDiffEqSDIRK", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "SparseArrays", "StableRNGs", "Statistics", "Test", "Zygote"]
 path = "."
 uuid = "6983ac59-2bba-40bc-b38d-59a2f57a07d2"
 version = "0.1.0"

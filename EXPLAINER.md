@@ -22,7 +22,7 @@ fraction of a millisecond, and, crucially, shows how to build it so we can *trus
 
 Honesty first, though: for the small 2D panel studied here the trusted simulation itself
 takes a few hundredths of a second, so nobody needs a stand-in for a single run, least of
-all an operator with a data center. A stand-in earns its keep where answers are needed by
+all **SpaceX** with its literally colossus data centers. A stand-in earns its keep where answers are needed by
 the *thousands inside a loop* (optimizing a design while heat couples to power and
 structure, or sweeping uncertain inputs), or *on board the spacecraft itself*, where
 there is no data center to ask. And the deepest goal of this project is knowing *when*

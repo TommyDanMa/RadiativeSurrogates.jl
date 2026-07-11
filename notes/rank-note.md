@@ -211,8 +211,12 @@ constraints. What survives as plausibly ours: (i) the cross-configuration cliff
 reconstruction of §4b (weighted collinearity = POD cliff to ~25% on seven configurations);
 (ii) the parity selection rule as an exact structural constraint; (iii) the §2(a)
 collapses run as pre-registered falsification tests, a move the width literature does not
-make. Baseline plan: DeepONet only, on the same snapshots; full DEIM dropped, since §6
-already delivers the Galerkin floor it would provide.
+make. Baseline run (pre-registered, `scripts/28`): a DeepONet at matched budget and
+training is competitive on L² (3.3e-3 against 1.35e-3, ensemble means, N = 20) but
+283× worse on PDE residual; freezing its trunk to the POD basis recovers 15× of the
+gap, so the learned basis carries it. Two of four registered predictions missed and
+are recorded (report §7.4). Full DEIM stays dropped, since §6 already delivers the
+Galerkin floor it would provide.
 
 For discussion:
 1. The §4b reconstruction (cliff = amplitude-weighted collinearity of the excited

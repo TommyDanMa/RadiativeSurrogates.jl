@@ -22,7 +22,7 @@ adds exactly one mode; conductivity as a third parameter adds none, against naiv
 parameter counting) and one missed (box-shrink scaling), the miss leading to the
 collinearity mechanism that reconstructs the cliff to ~25% across seven configurations.
 An exact reduced-Galerkin floor certifies the architecture: at the deployed rank,
-100.00% of the surrogate's error is coefficient-map error, and an 8,642-parameter
+100% of the surrogate's error is coefficient-map error, and an 8,642-parameter
 whitened MLP reaches $9.2\cdot10^{-4}$ relative $L^2$ with a PDE residual ~6,000×
 smaller than a direct field MLP's, at thousands of times the FOM's throughput.
 **Transient case: not yet, for a measured reason.** Load switching re-thickens the
@@ -47,7 +47,7 @@ measured. Here it
 is measured, explained, and relied on: §5 explains the collapse (two exact parameter
 collapses, a measured functional collinearity); §6 tests the explanation with
 predictions pre-registered before the scripts ran, two hits and one recorded miss; §7
-draws the consequence, an exact Galerkin floor certifying that 100.00% of the deployed
+draws the consequence, an exact Galerkin floor certifying that 100% of the deployed
 surrogate's error is coefficient-map error, none of it basis.
 
 A diagnostic earns the name only if it can say no. The transient problem supplies the
@@ -238,12 +238,8 @@ decaying Kolmogorov widths; the smoothness-to-decay half of the argument is stan
 (Cohen–DeVore–Schwab and successors; references at the end). This explains *fast* decay.
 It does not explain where the cliff sits.
 
-**Mechanism.** With the load geometry fixed, varying $Q$ scales the (linear)
-source-response shape exactly, and varying $\varepsilon$ mostly moves the radiative
-equilibrium *level*, a strongly nonlinear scalar multiplying the constant mode. Strong
-parameter nonlinearity is invisible to POD rank: it lives entirely in the coefficient
-map $c(\mu)$, which is precisely what a learned mapper is for. (What re-thickens the
-manifold is not the parameters but the transients, §8.)
+**Mechanism.** With the load geometry fixed, varying $Q$ scales the linear source-response shape exactly. Varying $\varepsilon$ moves the radiative-equilibrium level — the amplitude of the constant mode. That amplitude depends on $\varepsilon$ strongly and nonlinearly, but the shape it multiplies is fixed, and POD rank sees only shapes. So the nonlinearity lives entirely in the coefficient map $c(\mu)$, which is what a learned mapper is for.
+(What re-thickens the manifold is transients, not parameters; §8.)
 
 If this explanation is right, it predicts. Three tests were pre-registered in
 `notes/rank-note.md` before `scripts/19_rank_prediction.jl` first ran:
@@ -256,7 +252,7 @@ If this explanation is right, it predicts. Three tests were pre-registered in
 
 ## 6. The predictions: two hits, one miss, and what the miss exposed
 
-Scored against `scripts/19_rank_prediction.jl` (misses are results, not failures):
+Each prediction targets a different way the explanation could fail: P1, whether load shapes really contribute one direction each; P2, whether the $Q/k$ collapse — not the parameter count — sets the rank; P3, whether analyticity sets the *scale* of the cliff. A hit supports the mechanism; a miss localizes which part is not yet understood. Scored against `scripts/19_rank_prediction.jl`:
 
 - **P1, hit.** The cliff moves down by exactly one mode:
   $\sigma_4/\sigma_1 = 8.3\cdot10^{-6}$.
@@ -359,10 +355,7 @@ The parent's non-monotonicity lesson recurs *in extremis*: mode 3 is numerically
 the network fit noise and measurably degrade both metrics. Model selection by held-out
 error, not by σ-decay alone, picks r = 2.
 
-Seed robustness, inline (full machinery in A.1): twenty fresh seeds varying the network
-initialization only give 1.35e-3 ± 0.18e-3, range [9.69e-4, 1.67e-3] (N = 20); the
-deployed 9.18e-4 sits at the favourable edge of that ensemble, and every conclusion
-(MLP < KAN, both ≪ direct; the r = 2 optimum) survives every seed. Paired bootstrap
+Seed robustness, inline (full machinery in A.1): twenty fresh seeds varying the network initialization only give 1.35e-3 ± 0.18e-3, range [9.69e-4, 1.67e-3] (N = 20). The deployed model's 9.18e-4 beats all twenty — it is a favourable seed, stated plainly in A.1. What does *not* depend on the seed is every conclusion: MLP < KAN, both ≪ direct, the r = 2 optimum, all surviving all twenty. Paired bootstrap
 differences on the same 102 test parameters exclude zero: KAN − MLP = +2.0e-3
 [1.6, 2.4]e-3, direct − MLP = +4.9e-3 [4.4, 5.4]e-3 rel L² (B = 10,000). The ordering is
 not seed luck.
@@ -377,27 +370,104 @@ any surrogate confined to the POD subspace. Mean over the 102 test parameters:
 | rank | L² projection floor | Galerkin floor | POD-MLP error | map share |
 | ---: | ---: | ---: | ---: | ---: |
 | 1 | 1.7e-2 | 2.4e-2 | 1.7e-2 | basis-limited |
-| **2** | 1.14e-9 | **1.14e-9** | 9.2e-4 | **100.00%** |
-| 3 | 6.2e-16 | 2.8e-13 | 1.3e-3 | 100.00% |
-| 5 | 1.8e-16 | 2.8e-13 | 1.7e-3 | 100.00% |
+| **2** | 1.14e-9 | **1.14e-9** | 9.2e-4 | **100%** |
+| 3 | 6.2e-16 | 2.8e-13 | 1.3e-3 | 100% |
+| 5 | 1.8e-16 | 2.8e-13 | 1.7e-3 | 100% |
 
-At and above the manifold rank the Galerkin floor equals the projection floor, so the
-deployed surrogate's error is 100.00% coefficient-map error; below it (r = 1) the mapper
-already sits at the basis floor. The crossover tells you, per rank, whether to spend
-effort on the basis or on the map. This is the certificate the architecture claim rests
-on: for this problem, at the deployed rank, there is nothing left to gain from the basis.
+At and above the manifold rank the Galerkin floor equals the L² projection floor to every
+digit measured (table: $1.14\text{e-}9 = 1.14\text{e-}9$ at $r=2$), so none of the deployed
+surrogate's error is basis error — all of it is in the coefficient map. Below it ($r=1$)
+the mapper already sits at the basis floor. The crossover tells you, per rank, whether to
+spend effort on the basis or on the map.
 
-### 7.4 The registered comparison: DeepONet (not run)
+### 7.4 The registered comparison: DeepONet (run 2026-07-11)
 
-The evidence above is floors and residuals. The natural external comparison, operator
-learning, exists so far only as a pre-registered protocol: a DeepONet
-(NeuralOperators.jl; branch on $\tilde\mu$, trunk on $x$) on the same 410 snapshots at
-equal and at 3× parameter budgets, matched training budget (gradient steps × batch
-size), overlaid loss curves, PDE residual as the primary metric, plus a third arm with
-the trunk *frozen to the POD basis* to isolate learned-basis vs fixed-basis effects.
-Registered prediction: competitive on rel L², worse on PDE residual and sample
-efficiency at this snapshot count. No numbers exist yet; none are claimed. (The parent
-project's exact-BC wedge does not apply here: config B has no Dirichlet BC.)
+The protocol registered here ran with predictions D1–D4 pre-registered in the script
+header before the first run and the scorecard appended after
+(`scripts/28_deeponet_baseline.jl`): a DeepONet (NeuralOperators.jl v0.6.4; branch on
+$\tilde\mu$, trunk on $x$, p = 8 latent functions) on the same 410 snapshots, at equal
+and 3× parameter budgets, the POD-MLP's training schedule byte-for-byte (6,000
+full-batch Adam epochs, geometric lr anneal, keep-best), scaled-field MSE for every
+arm, N = 20 init-only seeds per arm, a trunk-frozen-to-$\Phi_2$ arm isolating
+learned-basis vs fixed-basis (the POD-DeepONet configuration of Lu et al. 2022, the
+operator-learning community's own fixed-basis variant), and a sample-efficiency curve
+at M ∈ {102, 205, 410} (N = 5). Two predictions hit, two missed; the misses are the interesting part.
+
+| arm | params | rel L² (N = 20) | residual ‖R(û)‖/‖F‖ (N = 20) |
+| --- | ---: | ---: | ---: |
+| POD-MLP r = 2 (reference) | 8,642 | 9.18e-4 deployed; 1.35e-3 ± 0.18e-3 | 6.53e-3 |
+| DeepONet, equal budget | 8,656 | 3.30e-3 ± 0.50e-3 | 1.85 ± 0.28 |
+| DeepONet, 3× budget | 25,936 | 2.44e-3 ± 0.33e-3 | 1.54 ± 0.17 |
+| DeepONet, trunk = $\Phi_2$ | 8,642 | 1.90e-2 ± 0.04e-2 | 0.125 ± 0.004 |
+
+The table reads as one chain. Swap one ingredient at a time and watch the residual: a
+free field (the direct MLP of §7.2) sits at 38.7; sharing eight smooth learned shapes
+brings it to 1.85; replacing the learned shapes with the POD basis at the same loss
+brings it to 0.125; training that basis's two coefficients under the whitened loss
+brings it to 6.53e-3; exact projection coefficients reach 5.1e-7 (§7.2). Shared
+smoothness, then what the basis is made of, then how the coefficients are trained,
+then the map error the Galerkin floor certifies (§7.3).
+
+**D1, hit (the primary metric).** At matched everything, the equal-budget DeepONet is
+283× worse on PDE residual (1.85 against 6.53e-3), and tripling the parameters buys
+17%, not orders (1.54): the bottleneck is the objective, not capacity, since nothing
+in a field-MSE loss asks for correct curvature. Competitive fields, violated physics:
+the residual applies the assembled operator, and second differences amplify
+percent-level curvature error to order one. POD modes inherit the curvature of the
+solutions they combine; a tanh trunk's shapes do not. The direct-MLP lesson of §7.2
+recurs one level up, softened but not removed by the shared-basis structure
+(38.7 → 1.85).
+
+**D2, hit.** Rel L² 3.30e-3, 2.4× the POD-MLP ensemble mean: competitive on the metric
+DeepONet optimizes.
+
+**D3, miss.** The frozen-trunk arm was registered to land within 3× of the POD-MLP's
+residual; it landed at 19× (0.125). The bound was mis-derived, not the physics: it
+ignored the loss-weighting effect A.1 had already measured (field MSE under-weights
+mode 2 by $(\sigma_1/\sigma_2)^2 \approx 76$; the frozen arm's 158.4 K peak-temperature
+error is that effect expressed in a QoI). Recorded as a miss regardless. The clause
+that carries information held: same loss, same budget, the POD trunk beats the learned
+trunk by 14.9× on residual; the learned basis carries the physics gap. The two metrics
+rank arms 1 and 3 in opposite orders (rel L² 3.30e-3 vs 1.90e-2): eight co-adapted
+shapes bend to wherever the L² fit is easiest, two frozen shapes have nowhere to hide
+an under-trained mode 2. Basis and loss fail separately; the POD-MLP is the arm that
+gets both right.
+
+**D4, miss; the frame was wrong, not the numbers.** Registered: DeepONet degrades more
+than the POD-MLP as the training set drops 410 → 102. Measured: DeepONet barely moves
+(4.36 → 3.29 → 3.67e-3 across M, flat within seed noise) while the POD-MLP converts
+data into accuracy (2.09 → 1.46 → 1.43e-3). DeepONet is not data-hungry here; it is
+*saturated* at an architecture-set floor that more data cannot buy through. Within the
+measured range the POD-MLP leads at every M (2.1–2.6×). Below M = 102 a registered
+probe (M ∈ {13, 26, 51}, N = 5; `scripts/29`) came back inconclusive by its own
+registered criterion: the two methods are indistinguishable there, both data-limited;
+no direction is claimed. "Worse sample efficiency" mispredicted the direction of the phenomenon: at
+larger M the gap widens. Read fairly, the flat curve is also a strength: the DeepONet
+reaches its own floor with a quarter of the data; what it pays is the height of that
+floor.
+
+![DeepONet baseline](../figures/27_deeponet.png)
+
+*Loss-curve overlay (normalized to initial value; the two losses differ, scaled-field
+MSE against whitened-coefficient MSE, so the overlay shows optimization dynamics
+only), residual ensembles per arm, and the sample-efficiency curve.*
+
+(The parent project's exact-BC wedge does not apply here: config B has no Dirichlet
+BC.)
+
+Scope, stated to keep the comparison honest: this contest runs on the diagnostic's
+yes-branch, the most favorable terrain a fixed linear basis can have, using the
+operator-learning community's own implementation stack (NeuralOperators.jl) and its
+own fixed-basis variant as an arm. It measures where the physics gap comes from at
+matched budget on a rank-3 manifold; it is not a claim about operator learning in
+general, and the no-branch (§8) points the opposite way, toward learnable dynamics.
+One more fence: every arm trains on snapshots alone, so the 283× is a statement about
+factorizations under a data-only loss, not about the best any DeepONet can do. A
+physics-informed DeepONet changes the information budget (residual evaluations are
+operator access); the reduced side's version of that upgrade is already in §7.3, the
+exact Galerkin coefficients solved from the operator instead of learned from data. A
+PI-DeepONet arm is the natural extension if the residual gap is ever the contested
+claim.
 
 ## 8. The transient branch: same diagnosis, opposite verdict
 
@@ -563,8 +633,7 @@ one does, in-distribution, with margin.
 
 ### 9.3 The deployment contract
 
-A surrogate model, to be dependable, should be accompanied by an explicit verification
-tier. This one has four measured clauses; the machinery behind each lives in Appendix A.
+This surrogate ships with four measured clauses; the machinery behind each lives in Appendix A.
 
 **Stay in the box.** Outside the training box the surrogate degrades *fast*, and
 measurably: on 60 points in a physically sensible ring (ε down to 0.02, Q up to
@@ -620,9 +689,7 @@ scoping or calibration tool, not the science.
    many-query design loops, in-distribution; batched steady field queries reach 10³–10⁴×.
 4. A methodological marker: a non-intrusive ROM of a strongly nonlinear-BC problem, with
    an exact Galerkin error decomposition and pre-registered diagnostics, assembled from
-   general-purpose open tooling in an afternoon of glue code. Ten years ago this was
-   utopia: the standard path was an intrusive Galerkin ROM with hand-built
-   hyper-reduction per nonlinearity (DEIM). That it is now routine is a credit to the
+   general-purpose open tooling in an afternoon of glue code. Ten years ago this was a research project in itself: the standard path was an intrusive Galerkin ROM with hand-built hyper-reduction per nonlinearity (DEIM). That it is now routine is a credit to the
    cited FE and solver ecosystems (Badia & Verdugo 2020; Pal et al. 2024; Rackauckas &
    Nie 2017).
 
@@ -632,8 +699,9 @@ in one family: the exact discrete energy balance (§2), $P_\text{rad}$ grid-exac
 1.0e-13 by an exact 1D reduction of the y-summed Q1 system (A.2). A pre-registered
 Float16 overflow prediction that missed in the surrogate's favour (A.3). And the
 settled-cycle bias, measured at 1.4–3 K and shown to cancel in rankings (A.4).
-Verification done honestly allows me to show my science.
-
+The verification is what licenses the verdicts in both directions: the machinery that
+certifies the steady *yes* is exactly what makes the transient *no* a measurement rather
+than a failure to try.
 **Caveats.** 2D, fixed geometry, unity view factor (deep space only), constant properties,
 effective (not measured) $\rho c$, in-distribution queries only (measured: median error
 grows ~17× just outside the training box, worst ~20% at 9% exceedance; A.1), and a single
@@ -665,8 +733,8 @@ future work is the natural home for one.
 
 ## 11. Future work
 
-Next in line: the DeepONet baseline registered in §7.4, protocol and prediction already
-on file. Then: thin-plate fin variant (radiation as a volumetric
+The DeepONet baseline has run (§7.4: two hits, two instructive misses). Next:
+thin-plate fin variant (radiation as a volumetric
 $2\varepsilon\sigma(u^4 - T_s^4)/t$ sink; same Newton machinery); parametric load
 geometry; view factors and orbital environment (solar/albedo as boundary sources); latent
 dynamics for $c(t)$ via the SciML stack (neural ODE / operator inference on
@@ -844,6 +912,9 @@ the sink, is the correct treatment.
 - NonlinearSolve.jl / OrdinaryDiffEq.jl: Pal et al. 2024; Rackauckas & Nie 2017.
 - Reduced-basis methods: Quarteroni, Manzoni & Negri, *Reduced Basis Methods for PDEs*, 2016.
 - DEIM: Chaturantabut & Sorensen, SIAM J. Sci. Comput. 2010.
+- Operator-learning comparison methodology and POD-DeepONet: Lu, Meng, Cai, Mao,
+  Goswami, Zhang & Karniadakis, Comput. Methods Appl. Mech. Eng., 2022
+  (arXiv:2111.05512).
 - Operator inference: Peherstorfer & Willcox, Comput. Methods Appl. Mech. Eng. 2016.
 - Parametric regularity and widths: Cohen, DeVore & Schwab, Anal. Appl. 2011; Cohen &
   DeVore, IMA J. Numer. Anal. 2016; Lassila, Manzoni, Quarteroni & Rozza 2013; Bachmayr &
