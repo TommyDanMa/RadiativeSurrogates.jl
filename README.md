@@ -29,7 +29,9 @@ set our parameter regime; this prototype is a methods study, not their tool.*
   8.6k-parameter MLP hits 9.2e-4 relative L² (PDE residual 6.5e-3 vs **38.7** for a direct
   field MLP) at ~5,300× single-query / ~8,900× batched throughput over the 23 ms Newton
   FOM. Load-cycle *transients* re-thicken the manifold (σ₈/σ₁ ≈ 3e-5 vs the steady cliff),
-  and the (μ, t) ↦ c surrogate, an honest 1.5–1.7% on raw trajectories, reproduces
+  and the (μ, t) ↦ c surrogate, an honest 1.5–1.7% on raw trajectories (a plateau
+  measured to be 99.98% map error: the exact-Galerkin dynamics floor is 3.7e-6,
+  report §8.4), reproduces
   full-order **design rankings** on a 10×10 (ε, duty) grid: Spearman 0.999, top-5 overlap
   5/5, identical optimum, QoI error median 2.4 K on a 382–785 K range, 221× end-to-end
   (≈8,100× warm), replicated at a second operating point (Spearman 0.9988).
@@ -51,7 +53,7 @@ set our parameter regime; this prototype is a methods study, not their tool.*
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
 julia --project=. test/runtests.jl              # test suite (CI runs this too)
 julia --project=. scripts/00_run_all.jl         # full reproduction, ~2 h
-# or step through scripts/01 ... 29 individually; the live console:
+# or step through scripts/01 ... 30 individually; the live console:
 julia --project=. scripts/14_run_console.jl
 ```
 
@@ -81,20 +83,21 @@ button-press away:
   (mass-matrix ODE form, square-wave loads via `tstops`), `postprocess.jl` (radiated power,
   peak T, energy balance), plus `pod.jl` / `models.jl` / `metrics.jl` ported from the parent
   project (`models_kan.jl` / `models_deeponet.jl` stay out of the core module).
-- `scripts/01–29`: numbered, deterministic (StableRNGs + Sobol): validate steady, steady
+- `scripts/01–30`: numbered, deterministic (StableRNGs + Sobol): validate steady, steady
   dataset/POD/mappers/eval/benchmark, validate transient, transient dataset/space-time
   POD/mapper/eval, Nr study, design study, console (01–14); robustness, grid
   independence, mapper diagnostics, rank predictions, statistics, Galerkin floor,
   eigenmode diagnostic, cliff reconstruction (15–23); V&V tightening: GCI error bars,
   precision audit, attractor check, forward UQ (24–27); pre-registered
-  operator-learning baseline, DeepONet (28), and its small-M probe (29).
-  `18_report_numbers.jl` reprints
+  operator-learning baseline, DeepONet (28), and its small-M probe (29); transient
+  Galerkin floor (30). `18_report_numbers.jl` reprints
   every headline table from `data/`.
 - `test/`: eight named test files (51 assertions): MMS rates 1.9996/1.9999/2.0000 through
   the nonlinear BC, AD = FD = hand-written Jacobian, exact discrete energy balance,
-  θ-family dt-orders 0.95–0.98 / 2.08–2.00, nodally exact 1D radiative equilibrium, plus a
-  skip-guarded regression file pinning the deployed surrogates with 3× margin (17 more
-  assertions with `data/` present, 68 in total).
+  θ-family dt-orders 0.95–0.98 / 2.08–2.00, nodally exact 1D radiative equilibrium, plus
+  two skip-guarded regression files (the deployed surrogates pinned with 3× margin; the
+  exact-Galerkin transient rollout of scripts/30), 20 more assertions with `data/`
+  present, 71 in total.
 - `report/report.md`: the write-up, figures included; `figures/`: all generated figures.
 
 ## Headline (steady, held-out; deployed rank r = 2, pinned by the rank sweep)

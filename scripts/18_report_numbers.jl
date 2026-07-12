@@ -51,6 +51,23 @@ if need(eval_t_path())
             median(et["dTpk"]), maximum(et["dTpk"]), median(et["dPq"]), maximum(et["dPq"]))
 end
 
+if need(joinpath(DATA_DIR, "galerkin_transient.jld2"))
+    gt = load(joinpath(DATA_DIR, "galerkin_transient.jld2"))
+    println("## §8.4 transient Galerkin floor (trajectory metric, N = $(gt["ntest"]) held-out)")
+    for (i, r) in enumerate(gt["ranks"])
+        @printf("| %d | %.2e | %.2e | %.2e |\n", r, gt["mapper_rel"][i],
+                gt["gal_rel"][i], gt["proj_floor_traj"][i])
+    end
+    @printf("r=8 QoI: peak-T err median %.3f K max %.3f K; P_rad median %.2e max %.2e\n",
+            median(gt["dTpk"]), maximum(gt["dTpk"]), median(gt["dPq"]), maximum(gt["dPq"]))
+    i8 = findfirst(==(DEFAULT_R_T), gt["ranks"])
+    @printf("stiffness (r=8, audit traj): |Re λ| ∈ [%.2e, %.2e] 1/s, per-period %.2e\n",
+            gt["stiff_min"][i8], gt["stiff_max"][i8], gt["stiff_per_period"])
+    @printf("tol check (1e-9 vs 1e-10): max Δ %.1e; scores: %s\n\n",
+            gt["tolcheck_max"],
+            join(("$k $(gt["scores"][k] ? "HIT" : "MISS")" for k in ("P-G1", "P-G2", "P-G3")), "  "))
+end
+
 if need(joinpath(DATA_DIR, "robustness.jld2"))
     rb = load(joinpath(DATA_DIR, "robustness.jld2"))
     println("## A.1 robustness (seed ensembles, N = $(length(rb["mlp_rels"])))")

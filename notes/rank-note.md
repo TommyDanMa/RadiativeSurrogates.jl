@@ -226,7 +226,11 @@ For discussion:
 2. The transient thread. The direct $(\mu, t) \to c$ mapper plateaus at 1.7% and is
    measurably data-limited (learning-curve slopes 0.8–1.1, report §8.2), so the next
    formulation is probably latent dynamics: $\dot c = f(c, \mu, \text{load}(t))$, eight
-   unknowns, trained through the ODE solver against the same trajectories. The load
+   unknowns, trained through the ODE solver against the same trajectories. The floor
+   under that exit is now measured (pre-registered, `scripts/30`): the exact-Galerkin
+   reduced dynamics at r = 8 land at 3.7e-6 traj rel L² on held-out trajectories,
+   1.26× the projection floor and 4,670× below the mapper plateau, and the reduced
+   spectrum spans |Re λ| 4.3e-5 to 8.2e-2 1/s (~3.9e2 per load period). The load
    switches put this squarely in the stiff-neural-ODE regime where naive training is
    known to fail (Kim, Ji, Deng, Ma & Rackauckas 2021: output scaling, loss choice,
    stabilized gradients). Is that the right next formulation here, and what training

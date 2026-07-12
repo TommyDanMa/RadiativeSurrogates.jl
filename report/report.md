@@ -580,11 +580,51 @@ regression is not the right factorization: it works to 1.7%, and its own diagnos
 which exits exist. In the order the measurements license them: a larger trajectory budget
 (the near-$M^{-1}$ slope pays directly), and latent *dynamics*, learning
 $\dot c = f(c, \mu, \text{load}(t))$ through the solver instead of regressing $c(t)$
-against time (§11; the load switches make the training problem stiff). More modes is
-measurably not an exit.
+against time (§8.4 measures the floor under this exit and §11 carries the build; the
+load switches make the training problem stiff). More modes is measurably not an exit.
 
 What survives the plateau is ranking. The 1.7% surrogate still orders designs almost
 perfectly, which is the engineering result the next section quantifies.
+
+### 8.4 The floor under the exit: exact-Galerkin reduced dynamics (run 2026-07-12)
+
+Before learning $f$, measure what any 8-dimensional Markovian model could achieve at
+best. The POD-Galerkin ROM, $M_r \dot c = -\Phi^T R(\bar u + \Phi c) + q(t)\,\Phi^T
+F_\text{unit}$ with $M_r = \Phi^T M \Phi$, integrates each held-out trajectory from
+the projected data IC (FBDF, tstops at the switches, tolerance 1e-9), with the
+projected residual assembled exactly. No hyper-reduction, and "exactly" scopes the
+assembly: evaluating $R$ at $\bar u + \Phi c$ instead of at the true full state is
+itself the closure approximation under test. Scored in the mapper's own trajectory
+metric, with the projection floor recomputed in that metric. Three predictions were
+registered in `scripts/30_transient_galerkin_floor.jl` before the run; all three hit.
+
+| $r$ | mapper | Galerkin (exact assembly) | projection floor (traj metric) |
+| ---: | ---: | ---: | ---: |
+| 4 | 1.69e-2 | 3.90e-4 | 3.31e-4 |
+| 8 | 1.74e-2 | 3.72e-6 | 2.95e-6 |
+| 16 | 1.76e-2 | 3.47e-7 | 1.49e-8 |
+| 32 | 1.45e-2 | 3.45e-7 | 2.66e-10 |
+
+Closure is nearly free where the reference data can resolve it: at $r = 8$ the exact
+dynamics land at 3.72e-6, 1.26× the projection floor (P-G1); at $r = 4$, 1.2×
+(P-G2). At $r = 16$ and 32 the readout saturates at 3.5e-7, the same value at both
+ranks: that is the dataset's own integration error (the trajectories were generated
+at tolerance 1e-7), exactly the fence registered before the run, and evidence about
+the data, not about the basis or the closure. This script's own integration
+contributes nothing (1e-9 against 1e-10 moves the result by 2.3e-12).
+
+The headroom number the exit hangs on (P-G3): the deployed mapper sits 4,670× above
+the dynamics floor at the same rank. In the §7.3 language, 99.98% of the transient
+plateau is coefficient-map error; the steady decomposition repeats one level up. The
+QoI floor says the same thing in engineering units: the exact reduced dynamics track
+peak temperature to 0.005 K median / 0.021 K max on held-out trajectories, where the
+mapper's tracking error is 14.3 K median / 42.6 K max (§8.2).
+
+One measurement was registered with no bet attached: the reduced spectrum. Along the
+audit trajectory at $r = 8$, |Re λ| spans 4.31e-5 to 8.15e-2 1/s (ratio ~1.9e3,
+~3.9e2 per load period): the latent training problem is genuinely stiff, which was
+the premise of the exit and is now a measurement. It also fixes the training
+integrator for the learned-$f$ arm to an implicit method.
 
 ## 9. Engineering consequences
 
