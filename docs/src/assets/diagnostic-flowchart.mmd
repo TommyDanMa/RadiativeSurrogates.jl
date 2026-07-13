@@ -1,0 +1,44 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "DejaVu Sans, Arial, sans-serif",
+    "fontSize": "17px",
+    "primaryColor": "#ffffff",
+    "primaryTextColor": "#111111",
+    "primaryBorderColor": "#111111",
+    "lineColor": "#111111",
+    "tertiaryColor": "#ffffff",
+    "edgeLabelBackground": "#ffffff"
+  },
+  "flowchart": {
+    "curve": "linear",
+    "diagramPadding": 8,
+    "htmlLabels": false,
+    "nodeSpacing": 30,
+    "padding": 10,
+    "rankSpacing": 38
+  }
+}}%%
+flowchart TB
+    A(["New parametric PDE<br/>choose surrogate architecture"])
+    A --> B["1 · Verify solver<br/>MMS · balance · Jacobians"]
+    B -- "fail" --> B2["Fix solver first"]
+    B2 --> B
+    B -- "verified" --> C["2 · Measure spectrum<br/>snapshots → POD σ-decay"]
+    C --> C2["2b · Verify measurement<br/>grid · elements · reconstruction floor"]
+    C2 -- "mesh-dependent:<br/>discretization measured" --> C
+    C2 -- "invariant" --> D["3 · Test structural hypotheses<br/>collapses · coefficient collinearity"]
+    D --> E["4 · Register, then test<br/>misses are results"]
+    E -- "miss:<br/>structure not understood" --> D
+    E -- "hits" --> F{"Hard σ-cliff?<br/>intrinsically low-dimensional"}
+    F -- "yes" --> G["Learn coefficients: μ ↦ c"]
+    G --> G2["5 · Certify deployment<br/>Galerkin floor · seeds · OOD · GCI"]
+    F -- "no: slow decay<br/>switching · transport · moving loads" --> H["Redirect<br/>data · latent dynamics · nonlinear ROM · operators"]
+
+    classDef default fill:#ffffff,stroke:#111111,stroke-width:1.5px,color:#111111
+    classDef gate fill:#ffffff,stroke:#111111,stroke-width:2.5px,color:#111111
+    classDef outcome fill:#ffffff,stroke:#111111,stroke-width:3px,color:#111111
+    classDef repair fill:#ffffff,stroke:#111111,stroke-width:1.5px,stroke-dasharray:5 4,color:#111111
+    class F gate
+    class G2,H outcome
+    class B2 repair

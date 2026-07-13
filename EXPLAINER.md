@@ -71,18 +71,19 @@ pre-registered predictions and the scorecard, is [notes/rank-note.md](notes/rank
   with a different element type.
 - **When the electronics blink on and off** like a satellite's duty cycle, the changing
   fields need more shapes (roughly 6 to 12), and the surrogate has to track time too.
-- **The pay-off test:** we asked both the slow, trusted simulator and the fast surrogate
+- **The pay-off test:** we asked both the trusted simulator and the surrogate
   the same engineering question, across 100 combinations of coating and duty cycle: which
   design keeps the chip coolest? They returned essentially the same ranking (rank
   agreement 0.999, checked at two different operating points), the same best design, and
-  the surrogate was hundreds to thousands of times faster. That makes it a *design tool*,
-  not just a demo.
-- **It fits where a data center does not.** The stand-in is about 8,600 numbers in total,
-  and it works identically in the lower-precision arithmetic small onboard processors
-  prefer (32-bit indistinguishable from 64-bit). It also turns uncertainty studies from
-  an overnight batch into seconds: a hundred thousand randomly drawn scenarios propagated
-  in about seven seconds, checked against ten thousand exact simulations at every
-  percentile we report.
+  the surrogate was hundreds to thousands of times faster. This is a controlled test of
+  ranking preservation, not evidence that the already-small simulator is operationally
+  unaffordable.
+- **The compact model has measured deployment properties.** The stand-in contains about
+  8,600 parameters and gives indistinguishable reported results in 32-bit and 64-bit
+  arithmetic. A hundred thousand randomly drawn scenarios propagate in about seven
+  seconds, checked against ten thousand paired simulations at every reported percentile.
+  These measurements establish compactness, precision tolerance and throughput; they do
+  not show that the full simulator cannot run on a particular device.
 
 ## Why you can trust the numbers
 

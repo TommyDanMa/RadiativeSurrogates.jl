@@ -25,27 +25,26 @@ set our parameter regime; this prototype is a methods study, not their tool.*
 - **Question:** does "learn the POD coefficients, not the field" survive a strongly
   nonlinear boundary condition, and what does the radiation regime do to the rank?
 - **Core result:** for fixed load geometry the *steady* manifold is numerically **rank 3**
-  (σ₃/σ₁ ≈ 7e-9); all nonlinearity lives in the coefficient map c(μ), and a whitened
-  8.6k-parameter MLP hits 9.2e-4 relative L² (PDE residual 6.5e-3 vs **38.7** for a direct
-  field MLP) at ~5,300× single-query / ~8,900× batched throughput over the 23 ms Newton
-  FOM. Load-cycle *transients* re-thicken the manifold (σ₈/σ₁ ≈ 3e-5 vs the steady cliff),
-  and the (μ, t) ↦ c surrogate, an honest 1.5–1.7% on raw trajectories (a plateau
-  measured to be 99.98% map error: the exact-Galerkin dynamics floor is 3.7e-6,
-  report §8.4), reproduces
+  (σ₃/σ₁ ≈ 7e-9); on this fixed-geometry box, the measured nonlinear variation is
+  represented through the coefficient map c(μ). A whitened 8.6k-parameter MLP hits
+  9.2e-4 relative L² (PDE residual 6.5e-3 vs **38.7** for a direct field MLP) at
+  ~5,300× single-query / ~8,900× batched throughput over the 23 ms Newton FOM.
+  Load-cycle *transients* re-thicken the manifold (σ₈/σ₁ ≈ 3e-5 vs the steady cliff),
+  and the (μ, t) ↦ c surrogate reaches 1.5–1.7% on raw trajectories, 4,670× above the
+  exact-Galerkin dynamics floor of 3.7e-6 at the same rank (report §8.4), yet reproduces
   full-order **design rankings** on a 10×10 (ε, duty) grid: Spearman 0.999, top-5 overlap
   5/5, identical optimum, QoI error median 2.4 K on a 382–785 K range, 221× end-to-end
   (≈8,100× warm), replicated at a second operating point (Spearman 0.9988).
-- **Why it matters:** not because anyone needs a stand-in for a 23 ms solve; a prime runs
-  the FOM and has the answer over a coffee. The honest value: (i) the *diagnostic*, when
-  coefficient learning is the right factorization and why this manifold is rank 3
-  ([notes/rank-note.md](notes/rank-note.md)); (ii) *many-query outer loops* (MDO,
-  optimization under uncertainty), where the surrogate propagates 10⁵ scenarios in ~7 s,
-  FOM-verified at every reported quantile (report A.5); (iii) *onboard/edge autonomy*,
-  where an 8.6k-parameter, Float32-lossless model with an explicit validity guard fits
-  hardware the FOM never will (report A.3).
+- **Why it matters:** not as a substitute for one 23 ms solve. The primary result is the
+  *diagnostic*: when coefficient learning is the right factorization and where its error
+  lives ([notes/rank-note.md](notes/rank-note.md)). The many-query and deployment studies
+  test consequences of that factorization: 10⁵ surrogate scenarios run in ~7 s with
+  paired FOM quantile checks (report A.5), and the 8.6k-parameter inference pipeline is
+  Float32-lossless with an explicit validity guard (report A.3). These measurements do
+  not claim that the small FOM is infeasible on a particular target.
 - **Main caveat:** 2D, fixed load geometry, unity view factor, in-distribution queries:
   a controlled prototype, not a general theorem. The rank-3 collapse is a property of the
-  fixed geometry, not of radiation physics.
+  tested fixed-geometry problem and should not be attributed to radiation physics alone.
 
 ## Quickstart
 
@@ -64,10 +63,11 @@ degradation is in report appendix A.1.
 
 **The two-page technical note** distilling the project's core finding is
 [notes/rank-note.md](notes/rank-note.md): a predictive argument for why the steady
-manifold is rank three, with pre-registered tests (a second heater adds exactly one mode;
-conductivity adds none, where naive parameter counting says it should; the box-scaling
-prediction missed, and the miss is reported), plus the exact-Galerkin error decomposition
-showing that 100.00% of the deployed surrogate's error is coefficient-map error at r = 2.
+manifold is rank three, with pre-registered tests (a second heater adds one dominant mode;
+conductivity adds no strong mode where naive parameter counting predicts one; the
+box-scaling prediction missed, and the miss is reported), plus the exact-Galerkin error
+decomposition showing that 100.00% of the deployed surrogate's error is coefficient-map
+error at r = 2.
 
 The console solves the steady FOM live while you drag ε and Q (a ~23 ms Newton solve is
 interactive), next to the surrogate, the error field, QoI readouts and both σ-spectra; the
@@ -124,8 +124,8 @@ NeuralOperators.jl, equal 8,656-parameter and 3× budgets, matched data-only tra
 N = 20 seeds/arm):
 competitive on rel L² (3.3e-3) but 283× worse on PDE residual (1.85 vs 6.5e-3); with
 the trunk frozen to the POD basis the residual gap collapses 15×, so the learned basis
-carries it. Two of four registered predictions missed and are reported as misses
-(report §7.4).
+is a material contributor under matched field loss and parameter budget. Two of four
+registered predictions missed and are reported as misses (report §7.4).
 
 New in the V&V pass (report appendix A): forward UQ through the surrogate (N = 10⁵ in
 ~7 s) matches an exact 10⁴-solve FOM Monte Carlo within 0.71 K at every reported
@@ -158,6 +158,7 @@ Spearman 0.999 with the same optimum (star).*
 radiated power while the chip sawtooths over ~60 K.*
 
 Relationship to the parent project: this executes its §11 "Gridap.jl FEM" future-work item,
-keeps its conventions (numbered scripts, MMS acceptance band, honest benchmark captions), and
-drops one of its claims honestly: with a radiation BC there is no "exact BC by construction",
-so QoI fidelity (radiated power, peak temperature) takes that role.
+keeps its conventions (numbered scripts, MMS acceptance band, fully specified benchmark
+captions), and drops one of its claims explicitly: with a radiation BC there is no
+"exact BC by construction", so QoI fidelity (radiated power, peak temperature) takes
+that role.

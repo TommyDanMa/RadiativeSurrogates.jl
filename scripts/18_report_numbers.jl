@@ -68,6 +68,18 @@ if need(joinpath(DATA_DIR, "galerkin_transient.jld2"))
             join(("$k $(gt["scores"][k] ? "HIT" : "MISS")" for k in ("P-G1", "P-G2", "P-G3")), "  "))
 end
 
+if need(joinpath(DATA_DIR, "opinf_transient.jld2"))
+    oi = load(joinpath(DATA_DIR, "opinf_transient.jld2"))
+    nsucc = oi["ntest"] - oi["nblow"]
+    println("## §8.5 quadratic operator inference (N = $(oi["ntest"]) held-out)")
+    @printf("fit: %d rows × %d features, ridge λ %.3e\n",
+            oi["nrows"], oi["nfeat"], oi["lambda"])
+    @printf("successful trajectories: %d/%d; escaped: %d/%d\n",
+            nsucc, oi["ntest"], oi["nblow"], oi["ntest"])
+    @printf("successful-rollout error only: mean %.3e, [%.3e, %.3e]\n\n",
+            oi["mean_rel"], minimum(oi["rels"]), maximum(oi["rels"]))
+end
+
 if need(joinpath(DATA_DIR, "robustness.jld2"))
     rb = load(joinpath(DATA_DIR, "robustness.jld2"))
     println("## A.1 robustness (seed ensembles, N = $(length(rb["mlp_rels"])))")

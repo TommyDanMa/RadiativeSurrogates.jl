@@ -256,7 +256,7 @@ axislegend(ax1; position = :rt)
 
 ax2 = Axis(fig[1, 2]; xticks = (1:4, ["POD-MLP", "DON equal", "DON 3×", "frozen Φ"]),
            yscale = log10, ylabel = "mean rel. residual",
-           title = "Physics consistency (N = $(NSEEDS) seeds)")
+           title = "Residual: DeepONet N = $(NSEEDS); POD deployed")
 for (i, v) in enumerate((fill(POD_DEP_RESID, 1), arms["equal"]["resids"],
                          arms["3x"]["resids"], arms["frozen"]["resids"]))
     boxplot!(ax2, fill(i, length(v)), v)

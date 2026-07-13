@@ -58,10 +58,10 @@ The argument is only worth discussing if it predicts. Three experiments, three *
 expected outcomes:
 
 **P1 -second heater patch.** $\mu = (\varepsilon, Q_1, Q_2)$ with a second, disjoint
-source patch. By (a), each load contributes its own exact direction. **Predict: centered
-rank 3** (two source responses + level), i.e. $\sigma_3/\sigma_1 = O(10^{-1\pm 1})$ now a
-*real* mode, and the remainder cliff moves to $\sigma_4/\sigma_1 = O(10^{-8\pm 1})$, with
-$\sigma_5$ near machine precision.
+source patch. By (a), each load contributes its own fixed inhomogeneity direction.
+**Predict: one additional dominant response mode, giving centered rank 3**, i.e.
+$\sigma_3/\sigma_1 = O(10^{-1\pm 1})$ now a *real* mode, and the remainder cliff moves
+to $\sigma_4/\sigma_1 = O(10^{-8\pm 1})$, with $\sigma_5$ near machine precision.
 
 **P2 -conductivity as the third parameter.** $\mu = (\varepsilon, Q, k)$, $k \in [2, 10]$.
 The naive "$d+1$ shapes" rule says rank 4. The structural argument says otherwise: by (a),
@@ -104,10 +104,10 @@ second-order Taylor term should: fitted log–log slopes $0.22 \pm 0.00$ on the 
 $0.66 \pm 0.01$ on the Q-axis, mean ± std over N = 3 independent dataset draws
 (registered prediction: at least one axis in [1, 2]). The replication was added at
 external review; the sampling uncertainty is negligible, so the miss is not a dataset
-artifact. The Q-axis dominance matches the edge-flux-nonuniformity mechanism, but the
+artifact. The Q-axis dominance is consistent with edge-flux nonuniformity, but the
 scaling says the parameter box is not in the asymptotic small-perturbation regime, so
 $\sigma_3$ is governed by something coarser than the local quadratic remainder. We
-report this as a miss; §4b locates what actually sets the scale.
+report this as a miss; §4b gives an exploratory quantitative decomposition of the scale.
 
 ## 4b. Exploratory follow-up (not pre-registered): what sets the cutoff?
 
@@ -122,7 +122,7 @@ it. Three findings:
    so odd-parity eigenmodes carry exactly zero ($\alpha_k/\alpha_1 \sim 10^{-13}$); only
    12 of the first 20 modes are excited at all.
 2. **Amplitudes fall as $\lambda^{-1.9}$**, steeper than the hypothesized $1/\lambda$.
-3. **The decisive one: the cliff is functional collinearity, not spectral content.**
+3. **The relevant decomposition is functional collinearity, not spectral sparsity.**
    Sizable eigen-content ($\alpha_4/\alpha_1 = 3.6\cdot10^{-2}$) coexists with POD
    $\sigma_3/\sigma_1 = 7\cdot10^{-9}$. Row-normalizing the 12 excited coefficient
    functions $\mu \mapsto \langle v_k, u(\mu)\rangle$ and taking their singular values
@@ -136,16 +136,16 @@ it. Three findings:
 $(r^*{+}1)$-th singular value of the *amplitude-weighted* excited coefficient functions
 reproduces the measured POD cliff to a uniform ~25% on all seven configurations tested:
 base $5.8$ vs $7.2\cdot10^{-9}$; P1 $6.6$ vs $8.3\cdot10^{-6}$, with $r^* = 3$ detected
-automatically, as the collapse argument demands; P2 $1.9$ vs $2.3\cdot10^{-8}$, $r^*=2$;
-and the four P3 shrink boxes track the box-size dependence. The cliff is therefore
-entirely a property of the dozen excited coefficient functions; nothing beyond the first
-20 eigenmodes contributes at cliff level. One correction to the naive product formula we
-sketched first: leakage × total amplitude of the leaking direction overpredicts by
+automatically, matching P1; P2 $1.9$ vs $2.3\cdot10^{-8}$, $r^*=2$; and the four P3
+shrink boxes track the box-size dependence. Within the first-20-mode expansion, the
+weighted coefficient functions reconstruct the cliff and the omitted modes contribute
+below its scale. One correction to the naive product formula we sketched first:
+leakage × total amplitude of the leaking direction overpredicts by
 $\sim 10^3$, because the equal-weight leaking direction mixes into the large-amplitude
 modes; the cliff is carried by its component *outside* the span of the top-$r^*$ weighted
 directions, which lives at the $\sim 10^{-4}$ relative amplitude of the small modes. In
-one line: **cliff scale = parametric collinearity leakage × the amplitude the independent
-direction actually carries.**
+the tested expansion: **cliff scale ≈ parametric collinearity leakage × the amplitude
+the independent direction actually carries.**
 
 ![Cliff reconstruction: predicted (weighted collinearity) vs measured POD cliff across seven configurations](../figures/22_cliff_reconstruction.png)
 
@@ -169,7 +169,7 @@ linearization, which is a steady, smooth-family statement.
 
 Exact reduced-Galerkin solves (Newton on $\Phi_r^\top R(\bar u + \Phi_r c) = 0$; no
 hyper-reduction needed offline at $n = 1891$; DEIM would be the online path) give the
-honest floor for *any* surrogate confined to the POD subspace. Mean over 102 held-out
+reference floor for *any* surrogate confined to the POD subspace. Mean over 102 held-out
 parameters, all solves converged:
 
 | rank | L² projection floor | Galerkin floor | POD-MLP error | map share of error |
