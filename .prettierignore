@@ -1,0 +1,3 @@
+# Markdown here is Pandoc-flavored (dollar math, citations, table attributes);
+# generic formatters corrupt it. Rendering is checked by the Pandoc build, not a formatter.
+*.md

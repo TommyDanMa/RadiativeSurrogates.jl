@@ -696,17 +696,14 @@ used above.
 
 The model is
 
-$$\dot{\tilde c} =
-(A_0 + \varepsilon A_1)\tilde c
-+ (H_0 + \varepsilon H_1)(\tilde c \otimes \tilde c)_\text{sym}
-+ (b_0 + \varepsilon b_1) + B\tilde q(t).$$
+$$\dot{\tilde c} = (A_0 + \varepsilon A_1)\tilde c + (H_0 + \varepsilon H_1)(\tilde c \otimes \tilde c)_\text{sym} + (b_0 + \varepsilon b_1) + B\tilde q(t).$$
 
 The load channel is linear, matching the FOM structure; emissivity enters the inferred
 operators affinely. The degree-two truncation is the named approximation: projecting
 $u|u|^3$ into coefficient space does not produce a quadratic polynomial. Central
 differences use only phase-grid points whose two-sided stencil crosses no load switch.
 The deterministic fit uses 3,850 rows, 91 features and a ridge fixed before the run at
-$10^{-8}\operatorname{tr}(G^\top G)/91 = 9.93\cdot10^{-6}$. Evaluation uses FBDF,
+$10^{-8}\mathrm{tr}(G^\top G)/91 = 9.93\cdot10^{-6}$. Evaluation uses FBDF,
 exact switch `tstops`, and absolute and relative tolerances $10^{-9}$.
 
 | method | information used | successful trajectories | trajectory rel $L^2$ |

@@ -1,0 +1,9 @@
+{
+    "[markdown]": {
+        "editor.formatOnSave": false,
+        "editor.defaultFormatter": null
+    },
+    "terminal.integrated.env.linux": {
+        "GH_CONFIG_DIR": "${workspaceFolder}/.gh-config"
+    }
+}
