@@ -7,6 +7,8 @@ notes/pitch.md
 notes/vv-plan.md
 notes/gpt-sol-approach.md
 notes/style-handoff.md
+notes/latent-run.md
 
 # VTK output from the early draft solver
 *.vtu
+.prettierignore

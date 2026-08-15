@@ -8,7 +8,10 @@
 const PROJECT_DIR = normpath(joinpath(@__DIR__, ".."))
 const WORKER_SCRIPT = joinpath(@__DIR__, "33_latent_ode_stabilized.jl")
 const SMOKE = get(ENV, "LATENT33_SMOKE", "0") == "1"
-const MAX_WORKERS = 3
+# Default 3 is the registered coordinator setting. Larger values are an
+# infrastructure-only override for many-core machines: members are isolated
+# one-thread children with fixed seeds, so concurrency changes no result.
+const MAX_WORKERS = max(1, parse(Int, get(ENV, "LATENT33_MAX_WORKERS", "3")))
 const CHECKPOINT_ROOT = joinpath(
     PROJECT_DIR, "data",
     SMOKE ? "latent_ode_stabilized_smoke" : "latent_ode_stabilized")
