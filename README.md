@@ -173,6 +173,7 @@ in technical discussions. This does not claim that he independently implemented
 the initial software or designed and executed every recorded experiment.
 Chris Rackauckas reviewed and discussed the project with Tommy and suggested further
 directions; he was not a formal research supervisor, coauthor or institutional sponsor.
+An existing editorial checklist (`notes/claims-checklist.md`) credits GPT-5.6 for prose review.
 External methods and software are referenced in `paper/paper.bib`, the report, and
 `Project.toml`. Codex assisted with November 2026 factual documentation corrections.
 
@@ -200,3 +201,12 @@ a substitute for an accessible working demo. The core tests can run without cach
 training artifacts; the artifact-dependent regression tests are then skipped.
 All benchmark and scientific headline values above are reports of existing runs,
 not independently reproduced measurements from the November 2026 portfolio review.
+
+## External inspiration imagery
+
+The two AI1 images in `docs/src/assets/` are external reference material, not
+figures made by this project. The [official SpaceX Starmind page](https://new.spacex.com/spacexai/starmind)
+provides context for the inspiration. Exact original image download URLs and reuse
+permissions are not documented here; exclude these images from portfolio uploads
+unless their source and permission are established. Use the project-generated
+numerical figures instead.
