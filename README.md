@@ -7,7 +7,7 @@
 *(Non-specialists: start with [EXPLAINER.md](EXPLAINER.md), a plain-language tour.)*
 
 This project grew out of [TommyDanMa/reduced-basis-neural-surrogates](https://github.com/TommyDanMa/reduced-basis-neural-surrogates), where the
-linear-elliptic reduced-basis study (a *Treball de Recerca*) lives; this repo is the
+independent, collaborative linear-elliptic reduced-basis study lives (it was not a Treball de Recerca); this repo is the
 standalone continuation. The problem: the heat equation on a 2D radiator section whose
 dominant heat rejection is **Stefan–Boltzmann radiation to deep space** (T_space = 3 K),
 with parametric emissivity ε and electronics load cycles, a controlled prototype for
@@ -108,7 +108,7 @@ button-press away:
 | **POD-MLP** | **9.2e-4** | **6.5e-3** | 8,642 | 5,270× | 8,852× |
 | POD-KAN | 2.9e-3 | 2.1e-2 | **880** | 4,159× | 9,104× |
 
-POD floor at r=2: 1.1e-9 (basis ≠ bottleneck). Speed-ups: batched throughput over FOM Newton
+POD floor at r=2: 1.1e-9 (basis ≠ bottleneck). Speed-ups: single-query latency and batched throughput relative to FOM Newton
 solves (23.1 ms median), incl. reconstruction, excl. plotting/model loading, after warm-up
 (BenchmarkTools medians, batch = 102). Hardware for all timings: AMD Ryzen AI 9 HX 370
 (CPU only), 1 Julia thread, 12 BLAS threads, Julia 1.12.6. Coefficients are trained **whitened**; the rank cliff gives c a ~1e9
@@ -162,3 +162,41 @@ keeps its conventions (numbered scripts, MMS acceptance band, fully specified be
 captions), and drops one of its claims explicitly: with a radiation BC there is no
 "exact BC by construction", so QoI fidelity (radiated power, peak temperature) takes
 that role.
+
+## Contributions, assistance, and investigation status
+
+Tommy proposed the idea and selected the tools and general technical direction.
+His father contributed software-development expertise and coordinated much of the
+implementation using Claude Code. Tommy studied the mathematical formulation,
+source code, numerical methods and results, and investigated the surrogate behavior
+in technical discussions. This does not claim that he independently implemented
+the initial software or designed and executed every recorded experiment.
+Chris Rackauckas reviewed and discussed the project with Tommy and suggested further
+directions; he was not a formal research supervisor, coauthor or institutional sponsor.
+External methods and software are referenced in `paper/paper.bib`, the report, and
+`Project.toml`. Codex assisted with November 2026 factual documentation corrections.
+
+The completed recorded studies through script 30 include the comparison of learned
+transient coefficients with reduced physical dynamics. At the tested settings,
+adding modes alone does not remove the prediction error; the exact-Galerkin comparison
+helps separate representation error from coefficient/dynamics prediction error.
+This is a conclusion about these experiments, not a theorem about all surrogates.
+Scripts 31–33 explore operator inference and latent dynamics; their presence does
+not establish a completed, validated latent-ODE result. These investigations remain
+unfinished. `paper/paper.md` is an unsubmitted draft with unresolved author metadata,
+not a publication or a reliable statement of sole software authorship; use this
+contribution disclosure when describing the project.
+
+## Demonstration prerequisites
+
+The console (`scripts/14_run_console.jl`) needs an OpenGL display and existing
+`data/` POD and trained-model artifacts; these are git-ignored and are **not included
+in a fresh clone**. `CONSOLE_SMOKE=1 julia --project=. scripts/14_run_console.jl`
+uses CairoMakie for a headless check but still requires those artifacts.
+`scripts/18_report_numbers.jl` also needs existing `data/*.jld2`; it cannot verify
+headline numbers from the public clone alone. Do not launch the full two-hour
+pipeline for a short demonstration. Existing PNG figures are static evidence, not
+a substitute for an accessible working demo. The core tests can run without cached
+training artifacts; the artifact-dependent regression tests are then skipped.
+All benchmark and scientific headline values above are reports of existing runs,
+not independently reproduced measurements from the November 2026 portfolio review.
