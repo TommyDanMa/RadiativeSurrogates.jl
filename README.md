@@ -165,11 +165,14 @@ that role.
 
 ## Contributions, assistance, and investigation status
 
-Tommy proposed the idea and selected the tools and general technical direction.
-His father contributed software-development expertise and coordinated much of the
-implementation using Claude Code. Tommy studied the mathematical formulation,
-source code, numerical methods and results, and investigated the surrogate behavior
-in technical discussions. This does not claim that he independently implemented
+A conversation about the heat-dissipation challenge of orbital data centres
+inspired Tommy to propose a simplified radiative model and select the tools and
+general technical direction. His father contributed software-development expertise
+and coordinated much of the implementation using Claude Code. Tommy studied the
+mathematical formulation, source code, numerical methods and results. In his
+investigation of console results, he asked Claude to suggest causes and implement
+changes, including investigations of the number of modes and learned mapping,
+and reviewed those changes with his father. This does not claim that he independently implemented
 the initial software or designed and executed every recorded experiment.
 Chris Rackauckas reviewed and discussed the project with Tommy and suggested further
 directions; he was not a formal research supervisor, coauthor or institutional sponsor.
